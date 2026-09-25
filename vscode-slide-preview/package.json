@@ -4,6 +4,7 @@
   "description": "Aperçu du transparent Beamer sous le curseur dans un fichier YAML, via build.py.",
   "version": "0.1.0",
   "publisher": "laurent",
+  "license": "MIT",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Other"],
   "main": "./extension.js",

@@ -366,3 +366,7 @@ reconnu, item de liste mal formé (typiquement une virgule non protégée dans u
 colonne sans `content`. Chaque erreur indique le fichier et la ligne du nœud fautif ; une option
 inconnue dans un bloc donne un avertissement. Avec `--slide`, l'erreur est aussi émise sous forme
 `PREVIEW_JSON {"error": ..., "kind": "yaml|structure|latex", "line": ...}` pour le plugin VS Code.
+
+## Licence
+
+MIT, voir `LICENSE`.
