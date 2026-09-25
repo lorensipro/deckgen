@@ -36,7 +36,7 @@ au prochain *Developer: Reload Window*. Un simple lien ne suffit plus : sans ins
 
 L'extension repère le cours en remontant depuis le fichier YAML jusqu'au dossier contenant
 `deck.yaml`, écrit le contenu du buffer dans `build/preview/current.yaml` et lance, depuis ce dossier,
-`python3 <deckgen>/build.py --slide build/preview/current.yaml:LIGNE [--lang ..] [--audience ..]`.
+`python3 <deckgen>/build.py --slide build/preview/current.yaml:LIGNE --origine FICHIER.yaml [--lang ..] [--audience ..]`. `--origine` est le vrai fichier édité : `build.py` en déduit le deck (celui dont `parts:` le contient, sinon `deck.yaml`) et, si ce deck a `navigation: true`, la section précédente pour que la frise d'avancement s'affiche avec le bon nom.
 Le `build.py` utilisé est celui du dépôt deckgen qui contient l'extension (réglage `slidePreview.buildScript`
 pour en désigner un autre).
 Elle lit la ligne `PREVIEW_JSON` imprimée par `build.py` et affiche `build/preview/slide-N.png`.

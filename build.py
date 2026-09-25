@@ -64,11 +64,33 @@ WARNINGS = []   # [(ligne, message)] accumulés pendant le rendu
 def warn(msg, node=None):
     WARNINGS.append((line_of(node), msg))
 
-SLIDE_KEYS = {"cite", "shrink", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
+SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
               "image", "figure", "tikz", "args", "full", "height", "width", "source", "tex", "label"}
+# Types d'encadrés « alert » : (couleur du préambule, icône fontawesome5)
+ALERT_TYPES = {
+    "retenir":    ("encre",    r"\faBookmark"),             # à retenir (défaut)
+    "attention":  ("alerte",   r"\faExclamationTriangle"),  # piège, limite, erreur fréquente
+    "bien":       ("monde",    r"\faCheckCircle"),          # c'est bien, résultat positif
+    "question":   ("prune",    r"\faQuestionCircle"),       # question ouverte, à discuter
+    "idee":       ("formel",   r"\faLightbulb"),            # intuition, idée clé
+    "definition": ("encre",    r"\faBook"),                 # définition, théorème
+    "exemple":    ("monde",    r"\faFlask"),                # exemple, expérience
+    "histoire":   ("sable",    r"\faHistory"),              # anecdote, contexte historique
+    "demo":       ("sarcelle", r"\faLaptopCode"),           # démonstration, code à lancer
+    "piege":      ("alerte",   r"\faBomb"),                 # erreur classique, piège d'examen
+    "reference":  ("sable",    r"\faFile"),                 # renvoi à un article, un chapitre (avec cite:)
+    "suite":      ("prune",    r"\faArrowRight"),           # on le reverra plus tard
+    "exercice":   ("prune",    r"\faPencilRuler"),          # question posée aux étudiants en séance
+}
+# Natures des blocs « block » : couleur du filet et du titre
+BLOCK_TYPES = {
+    "defaut": "encre", "theoreme": "formel", "definition": "encre", "exemple": "monde", "objectif": "prune",
+    "remarque": "gris", "code": "sarcelle", "histoire": "sable",
+    "monde": "monde", "formel": "formel",       # les deux mondes du cours : réel / naturel vs calculé / formel
+}
 BLOCK_MAIN = {"text", "bullets", "numbered", "image", "figure", "tikz", "images", "alert", "block", "quote", "stats",
               "columns", "tex", "space", "placeholder"}   # + "source" seul = bloc source
-BLOCK_OPTS = {"layout", "step", "only", "except", "hide", "meta", "hidden", "width", "height", "source", "align", "size", "style",
+BLOCK_OPTS = {"layout", "step", "type", "icon", "only", "except", "hide", "meta", "hidden", "width", "height", "source", "align", "size", "style",
               "title", "bold", "gap", "valign", "reveal", "args", "deps", "format"}
 # Dispositions de colonnes nommées (- layout: texte-image puis columns: [...]) : largeurs en fraction de \\textwidth.
 LAYOUTS = {"egal": [0.48, 0.48], "texte-image": [0.6, 0.36], "image-texte": [0.36, 0.6]}
@@ -163,7 +185,7 @@ def md(s, ctx=None, par=True):
     s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", keep_link, s)
     s = esc(s)
     s = fonts(s)
-    s = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", s)
+    s = re.sub(r"\*\*(.+?)\*\*", r"\\gras{\1}", s)
     s = re.sub(r"(?<![\w\\])\*(?!\s)(.+?)(?<!\s)\*(?!\w)", r"\\emph{\1}", s)
     s = re.sub(r"`([^`]+)`", r"\\texttt{\1}", s)
     if ctx and ctx.lang == "en":
@@ -331,14 +353,24 @@ def render_block(b, ctx, indent):
     if "alert" in b:
         title = md(b.get("title", ""), ctx)
         txt = md(b["alert"], ctx)
-        centered = r"\centering " if b.get("align", "center") == "center" else ""
+        align = r"\centering " if b.get("align", "left") == "center" else r"\raggedright "
         bold = r"\bfseries " if b.get("bold", True) else ""
-        return f"{i}\\begin{{alertblock}}{{{title}}}\n{i}  {centered}{bold}{txt}\n{i}\\end{{alertblock}}"
+        head = f"{{\\color{{bleugris}}\\bfseries {title}\\par}}\\vspace{{2pt}}" if title else ""
+        typ = b.get("type", "retenir")
+        if typ not in ALERT_TYPES:
+            raise SystemExit(f"alert: type inconnu « {typ} » (connus : {', '.join(ALERT_TYPES)})")
+        col, icon = ALERT_TYPES[typ]
+        icon = b.get("icon", icon)
+        return f"{i}\\begin{{alertbox}}{{{col}}}{{{icon}}}\n{i}  {align}{head}{bold}{txt}\\par\n{i}\\end{{alertbox}}"
     if "block" in b:
         blk = b["block"]
         title = md(blk.get("title", ""), ctx)
         inner = render_blocks(blk.get("content"), ctx, i + "  ") if blk.get("content") else i + "  " + md(blk.get("text", ""), ctx)
-        return f"{i}\\begin{{block}}{{{title}}}\n{inner}\n{i}\\end{{block}}"
+        typ = blk.get("type", b.get("type", "defaut"))
+        if typ not in BLOCK_TYPES:
+            raise SlideError(f"block: type inconnu « {typ} » (connus : {', '.join(BLOCK_TYPES)})", b)
+        head = f"{i}  {{\\color{{{BLOCK_TYPES[typ]}}}\\bfseries {title}\\par}}\\vspace{{2pt}}\n" if title else ""
+        return f"{i}\\begin{{blocbox}}{{{BLOCK_TYPES[typ]}}}\n{head}{inner}\n{i}\\end{{blocbox}}"
     if "quote" in b:
         q = b["quote"]
         return f"{i}\\citer{{{md(q.get('text',''), ctx)}}}{{{md(q.get('author',''), ctx)}}}{{{q.get('reveal', 1)}}}"
@@ -498,7 +530,8 @@ def _render_slide(s, ctx):
     if not visible(s, ctx):
         return None
     if "section" in s:
-        return f"\\sectionframe{{{md(s['section'], ctx)}}}{{{md(s.get('subtitle',''), ctx)}}}"
+        court = s.get("court", s.get("short"))
+        return f"\\sectionframe[{md(court, ctx) if court else ''}]{{{md(s['section'], ctx)}}}{{{md(s.get('subtitle',''), ctx)}}}"
     if "tex" in s and "content" not in s:
         return L(s["tex"], ctx)
     if "figure" in s:
@@ -520,12 +553,21 @@ def _render_slide(s, ctx):
     if content is None and "image" in s:
         content = [{"image": s["image"], "height": s.get("height", 0.8), "source": s.get("source")}]
         LINES[id(content[0])] = line_of(s)
-    lines.append(render_blocks(content, ctx))
+    rendu = render_blocks(content, ctx)
+    if content and isinstance(content[-1], dict) and "alert" in content[-1]:
+        # un transparent qui finit par un alert : un ressort avant lui répartit un peu l'espace libre en vertical
+        # (même ordre que le centrage de Beamer ; avec cite:, la ligne de référence a un \vfill plus fort, d'où le fill)
+        ressort = "\\vskip0pt plus0.5fill\n" if s.get("cite") else "\\vskip0pt plus1fil\n"
+        k = rendu.rfind("\\begin{alertbox}")
+        rendu = rendu[:k] + ressort + rendu[k:]
+    lines.append(rendu)
     if s.get("cite"):
         lines.append(render_cite(s["cite"], s))
     if s.get("notes"):
         lines.append(f"  \\note{{{md(s['notes'], ctx)}}}")
     lines.append("\\end{frame}")
+    if s.get("frise") is False:     # pas de point dans la frise d'avancement (animation, enchaînement rapide)
+        lines[0] = "\\sansfrise{" + lines[0]; lines[-1] += "}"
     return "\n".join(lines)
 
 # ------------------------------------------------------------------ document
@@ -542,14 +584,38 @@ def document(deck, ctx, body, titlepage=True):
         "\\newcommand{\\ifaud}[3]{\\ifdefstring{\\audience}{#1}{#2}{#3}}  % \\ifaud{public}{si public}{sinon}",
         "\\newcommand{\\refline}[1]{\\vfill{\\tiny\\color{gris}#1\\par}}  % ligne de références (cite:) en bas du transparent",
     ])
+    # identifiant de construction : date + empreinte du contenu (traceur discret : pied de page et métadonnées PDF)
+    import hashlib, datetime
+    version = f"v{datetime.date.today():%Y.%m.%d}-{hashlib.sha1(chr(10).join(body).encode('utf8')).hexdigest()[:6]}" if body else ""
+    licence = md(meta.get("licence", ""), ctx, par=False)
+    pied = meta.get("pied", "")
+    ico = lambda i, v: f"{i}~{md(v, ctx, par=False)}" if v else ""
+    if isinstance(pied, dict):      # rubriques séparées, une icône devant chacune
+        pied_gauche = ico(r"\faBookOpen", meta.get("title", ""))
+        pied_milieu = "\\quad".join(x for x in (ico(r"\faUser", pied.get("auteur")), ico(r"\faGraduationCap", pied.get("filiere")),
+                                                ico(r"\faUniversity", pied.get("ecole")), ico(r"\faCalendar", pied.get("date"))) if x)
+    else:                           # une seule chaîne : au milieu
+        pied_gauche, pied_milieu = "", md(pied, ctx, par=False)
+    pied_droite = "\\quad".join(x for x in (ico(r"\faCreativeCommons", licence), ico(r"\faTag", version)) if x)
+    pied_complet = pied_gauche or pied_milieu or pied_droite
+    plain = lambda v: re.sub(r"\[(.*?)\]\(.*?\)", r"\1", str(L(v, ctx) or "").split("\n")[0]).replace("{{small:", "").replace("}}", "").strip()
+    pdfmeta = ("\\hypersetup{" + ",".join(f"{k}={{{v}}}" for k, v in [
+        ("pdftitle", plain(meta.get("title", ""))), ("pdfauthor", plain(meta.get("author", ""))),
+        ("pdfsubject", plain(meta.get("date", ""))),
+        ("pdfkeywords", ", ".join(x for x in (licence, version, ctx.lang, ctx.audience or "") if x))] if v) + "}") if body else ""
+    date = md(meta.get("date", ""), ctx, par=False) + (f"\\\\[2pt]{{\\small\\color{{gris}}{licence}}}" if licence else "")
     return "\n".join([
-        f"% Fichier généré par build.py (lang={ctx.lang}, audience={ctx.audience}) -- ne pas éditer",
-        "\\documentclass[aspectratio=169,11pt]{beamer}", lang_macros, pre,
+        f"% Fichier généré par build.py (lang={ctx.lang}, audience={ctx.audience}, {version}) -- ne pas éditer",
+        f"\\documentclass[aspectratio=169,{meta.get('fontsize', '10pt')}]{{beamer}}", lang_macros, pre,
         f"\\title{{{md(meta.get('title',''), ctx, par=False)}}}",
         f"\\subtitle{{{md(meta.get('subtitle',''), ctx, par=False)}}}",
         f"\\author{{{md(meta.get('author',''), ctx, par=False)}}}",
-        f"\\date{{{md(meta.get('date',''), ctx, par=False)}}}",
-        "\\begin{document}", f"\\def\\audience{{{ctx.audience or ''}}}", "\\maketitle" if titlepage else "",
+        f"\\date{{{date}}}", pdfmeta,   # métadonnées PDF : avant \begin{document}, hyperref les écrit à ce moment-là
+        "\\begin{document}", f"\\def\\audience{{{ctx.audience or ''}}}",
+        "\\navigationtrue" if meta.get("navigation") else "",
+        f"\\colorlet{{teinte}}{{{meta['teinte']}}}" if meta.get("teinte") else "",
+        (f"\\renewcommand{{\\piedgauche}}{{{pied_gauche}}}\\renewcommand{{\\piedmilieu}}{{{pied_milieu}}}"
+         f"\\renewcommand{{\\pieddroite}}{{{pied_droite}}}") if pied_complet else "", "\\maketitle" if titlepage else "",
         *body, "\\end{document}", ""])
 
 def run_pdflatex(tex_path, out_dir, passes=2, fmt=None):
@@ -680,7 +746,7 @@ def slide_index_at(path, line):
 
 def make_format(deck, ctx, out_dir):
     """Précompile le préambule (mylatexformat) -> out_dir/preambule-<lang>.fmt. Renvoie le nom du format."""
-    name = f"preambule-{ctx.lang}"
+    name = f"preambule-{deck.get('name', 'deck')}-{ctx.lang}"
     src = os.path.join(out_dir, name + ".tex")
     with open(src, "w", encoding="utf8") as f:
         f.write(document(deck, ctx, [], titlepage=False))
@@ -696,7 +762,7 @@ def make_format(deck, ctx, out_dir):
 def format_a_jour(deck, ctx, out_dir):
     """Le format précompilé du préambule est refait si le préambule généré (preamble.tex + macros de build.py)
     a changé depuis sa dernière compilation : on compare son texte à un fichier témoin .src."""
-    name = f"preambule-{ctx.lang}"
+    name = f"preambule-{deck.get('name', 'deck')}-{ctx.lang}"
     fmt, temoin = os.path.join(out_dir, name + ".fmt"), os.path.join(out_dir, name + ".src")
     courant = document(deck, ctx, [], titlepage=False)
     ancien = open(temoin, encoding="utf8").read() if os.path.exists(temoin) else None
@@ -788,7 +854,44 @@ def _compile_preview(deck, ctx, frame_tex, png, use_fmt, info):
                 warnings=[{"line": l, "message": m} for l, m in WARNINGS])
     print("PREVIEW_JSON " + json.dumps(info, ensure_ascii=False))
 
-def preview(deck, ctx, spec, png=True, use_fmt=True):
+def part_paths(deck, project):
+    """Chemins absolus des parties du deck, dans l'ordre."""
+    slides_dir = os.path.join(project, deck.get("slides_dir", "slides"))
+    return [os.path.abspath(os.path.join(slides_dir, p if p.endswith(".yaml") else p + ".yaml")) for p in deck["parts"]]
+
+def deck_of(origin, project):
+    """Le deck-*.yaml du projet dont parts: contient ce fichier de transparents (None sinon)."""
+    for name in sorted(os.listdir(project)):
+        if not (name.startswith("deck") and name.endswith(".yaml")): continue
+        path = os.path.join(project, name)
+        try:
+            d = load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if isinstance(d, dict) and d.get("parts") and os.path.abspath(origin) in part_paths(d, project):
+            return path
+    return None
+
+def section_before(deck, ctx, origin, idx):
+    """La déclaration \\section[court]{long} de la dernière page de section qui précède le transparent idx du
+    fichier origin dans le deck (parties précédentes comprises), pour que la frise d'avancement ait un nom ; sinon ''."""
+    paths = part_paths(deck, PROJECT)
+    origin = os.path.abspath(origin)
+    if origin not in paths: return ""
+    last = None
+    for p in paths[:paths.index(origin) + 1]:
+        try:
+            slides = load_yaml(p)
+        except (yaml.YAMLError, OSError):
+            continue
+        for i, s in enumerate(slides):
+            if p == origin and i >= idx: break
+            if isinstance(s, dict) and "section" in s and visible(s, ctx): last = s
+    if not last: return ""
+    court = last.get("court", last.get("short"))
+    return f"\\section[{md(court, ctx)}]{{{md(last['section'], ctx)}}}" if court else f"\\section{{{md(last['section'], ctx)}}}"
+
+def preview(deck, ctx, spec, png=True, use_fmt=True, origin=None):
     """--slide fichier.yaml:ligne : compile le seul transparent sous cette ligne.
     Termine par une ligne PREVIEW_JSON {...} pour les outils (plugin VS Code)."""
     import json
@@ -832,11 +935,12 @@ def preview(deck, ctx, spec, png=True, use_fmt=True):
     if use_fmt:
         fmt = format_a_jour(deck, ctx, out_dir)
     tex_path = os.path.join(out_dir, "slide.tex")
+    sec = section_before(deck, ctx, origin or path, idx) if deck.get("meta", {}).get("navigation") else ""
     with open(tex_path, "w", encoding="utf8") as f:
-        f.write(document(deck, ctx, [r], titlepage=False))
-    run_pdflatex(tex_path, out_dir, passes=1, fmt=fmt)
+        f.write(document(deck, ctx, [sec, r] if sec else [r], titlepage=False))
+    run_pdflatex(tex_path, out_dir, passes=2 if sec else 1, fmt=fmt)   # 2 passes : la frise lit le .nav
     pdf = os.path.join(out_dir, "slide.pdf")
-    print(f"transparent {idx+1} de {os.path.basename(path)} -> build/preview/slide.pdf")
+    print(f"transparent {idx+1} de {os.path.basename(origin or path)} -> build/preview/slide.pdf")
     if png:
         # dernière page = transparent complet ; une image par couche en plus
         subprocess.run(["magick", "-density", "110", pdf, "-background", "white", "-alpha", "remove",
@@ -855,7 +959,8 @@ def main():
     ap.add_argument("--lang", default=None, choices=LANGS)
     ap.add_argument("--audience", default=None)
     ap.add_argument("--out", default=None, help="nom de sortie sans extension")
-    ap.add_argument("--deck", default="deck.yaml")
+    ap.add_argument("--deck", default=None, help="deck.yaml par défaut ; avec --slide, le deck dont parts: contient le fichier")
+    ap.add_argument("--origine", metavar="FICHIER.yaml", help="avec --slide : fichier réel du transparent (le plugin passe une copie du tampon)")
     ap.add_argument("--no-pdf", action="store_true")
     ap.add_argument("--slide", metavar="FICHIER.yaml:LIGNE", help="aperçu du seul transparent sous cette ligne")
     ap.add_argument("--no-png", action="store_true", help="avec --slide : ne pas produire de PNG")
@@ -869,7 +974,11 @@ def main():
     ap.add_argument("--buffer", metavar="TMP", help="avec --tikz : fichier contenant le contenu non sauvegardé de l'éditeur")
     a = ap.parse_args()
     global PROJECT
-    deck_path = os.path.abspath(a.deck)
+    if a.deck is None and a.slide:      # aperçu : le deck est celui qui contient le fichier du transparent
+        origin = a.origine or a.slide.rpartition(":")[0]
+        a.deck = deck_of(origin, os.path.dirname(os.path.abspath(origin)) if a.origine else os.getcwd()) \
+                 or deck_of(origin, os.getcwd()) or "deck.yaml"
+    deck_path = os.path.abspath(a.deck or "deck.yaml")
     if not os.path.exists(deck_path):
         sys.exit(f"Deck introuvable : {deck_path}")
     PROJECT = os.path.dirname(deck_path)
@@ -894,7 +1003,7 @@ def main():
     if a.make_format:
         make_format(deck, ctx, os.path.join(PROJECT, "build", "preview")); return
     if a.slide:
-        preview(deck, ctx, a.slide, png=not a.no_png, use_fmt=not a.no_fmt); return
+        preview(deck, ctx, a.slide, png=not a.no_png, use_fmt=not a.no_fmt, origin=a.origine); return
     if a.tikz:
         preview_tikz(deck, ctx, a.tikz, a.buffer, png=not a.no_png, use_fmt=not a.no_fmt); return
     build(deck, ctx, out, make_pdf=not a.no_pdf)

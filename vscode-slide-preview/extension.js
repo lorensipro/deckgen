@@ -130,7 +130,7 @@ function render(document) {
   // build.py du générateur : réglage slidePreview.buildScript, sinon celui du dépôt qui contient ce plugin
   const build = cfg.get('buildScript') || path.join(__dirname, '..', 'build.py');
   const args = tikz ? [build, '--tikz', state.file, '--buffer', tmp]
-                    : [build, '--slide', `${tmp}:${state.line}`];
+                    : [build, '--slide', `${tmp}:${state.line}`, '--origine', state.file];   // origine : deck et section du transparent
   if (state.lang) args.push('--lang', state.lang);
   if (state.audience) args.push('--audience', state.audience);
   const t0 = Date.now();

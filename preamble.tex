@@ -39,19 +39,73 @@
 \setbeamertemplate{itemize subitem}{\color{accent}\raisebox{0.35ex}{\rule{0.55ex}{0.15ex}}}
 \setbeamerfont{frametitle}{size=\Large,series=\bfseries}
 % Titre sobre : texte bleu-gris gras, remonté, trait bleu nuit presque pleine largeur
+% Frise d'avancement (option navigation: true du deck) : en haut du transparent, un point par transparent de la
+% section courante (plein pour le transparent en cours), puis le nom court de la section entre parenthèses.
+% Un transparent avec frise: false (animations, enchaînements rapides) n'écrit pas de point.
+\newif\ifnavigation
+\setbeamersize{mini frame size=.08cm,mini frame offset=.025cm}
+\makeatletter
+\newcount\deckgen@courant
+\newtoks\deckgen@avant \newtoks\deckgen@apres
+\newbox\deckgen@dotsbox \newbox\deckgen@avantbox \newbox\deckgen@apresbox \newdimen\deckgen@dispo
+% Frise : noms courts des sections précédentes, points de la section courante (nom court centré dessous), noms des suivantes
+\def\deckgendots{\begingroup\tiny
+  \def\subsectionentry##1##2##3##4##5{}%
+  % passe 1 : noms des autres sections, et le point « en cours » = dernier transparent compté ne dépassant pas celui-ci
+  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax
+  \def\sectionentry##1##2##3##4##5{\ifnum##1<\c@section\relax\deckgen@avant=\expandafter{\the\deckgen@avant{\color{gris}##2}\hskip8pt plus1fil}\fi
+    \ifnum##1>\c@section\relax\deckgen@apres=\expandafter{\the\deckgen@apres\hskip8pt plus1fil{\color{gris}##2}}\fi}%
+  \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax\ifnum##3>\c@subsectionslide\else\deckgen@courant=##3\relax\fi\fi}%
+  \dohead
+  % passe 2 : les points
+  \def\sectionentry##1##2##3##4##5{}%
+  \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax
+    \ifnum\deckgen@courant=##3\relax{\color{teinte}\usebeamertemplate{mini frame}}%
+    \else{\color{bleugris!60}\usebeamertemplate{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
+  \setbox\deckgen@dotsbox=\hbox{\dohead\unskip}%
+  % si les points et les noms ne tiennent pas sur la ligne, on resserre les points (jusqu'à 80 % de leur écart)
+  \setbox\deckgen@avantbox=\hbox{\the\deckgen@avant}\setbox\deckgen@apresbox=\hbox{\the\deckgen@apres}%
+  \deckgen@dispo=\dimexpr\hsize-\leftskip-\rightskip-\wd\deckgen@avantbox-\wd\deckgen@apresbox\relax
+  \ifdim\wd\deckgen@dotsbox>\deckgen@dispo\setbox\deckgen@dotsbox=\hbox to\deckgen@dispo{\dohead\unskip}\fi
+  \hbox to\dimexpr\hsize-\leftskip-\rightskip\relax{\the\deckgen@avant
+    \vtop{\hbox{\copy\deckgen@dotsbox}\vskip1pt\hbox to\wd\deckgen@dotsbox{\hss{\color{teinte}(\ifnum\c@section=0 \color{gris}hors section\else\insertsectionhead\fi)}\hss}}%
+    \the\deckgen@apres}%
+  \endgroup}
+% \sansfrise{...} : le transparent n'écrit pas sa ligne dans le .nav (mais vide bien la page et traite les notes)
+\def\deckgen@writeslidentry@sansfrise{\expandafter\ifblank\expandafter{\beamer@framestartpage}{}{\clearpage\beamer@notesactions}}
+\newcommand{\sansfrise}[1]{\begingroup\let\beamer@writeslidentry\deckgen@writeslidentry@sansfrise#1\endgroup}
+\makeatother
 \setbeamertemplate{frametitle}{%
   \nointerlineskip
-  \vspace*{5pt}%
+  \ifnavigation
+    \vspace*{3pt}%
+    \begin{beamercolorbox}[wd=\paperwidth,leftskip=0.04\paperwidth,rightskip=0.04\paperwidth,sep=0pt]{frametitle}%
+      \deckgendots\par
+    \end{beamercolorbox}%
+    \vspace*{1pt}%
+  \else
+    \vspace*{5pt}%
+  \fi
   \begin{beamercolorbox}[wd=\paperwidth,leftskip=0.04\paperwidth,rightskip=0.04\paperwidth,sep=0pt]{frametitle}%
     \usebeamerfont{frametitle}\insertframetitle\strut
   \end{beamercolorbox}%
   \vspace*{3pt}%
-  \hspace*{0.04\paperwidth}{\color{encre}\rule{0.92\paperwidth}{1.1pt}}%
+  \hspace*{0.04\paperwidth}{\color{teinte}\rule{0.92\paperwidth}{1.1pt}}%
   \vspace*{4pt}%
 }
 \setbeamerfont{title}{size=\Huge,series=\bfseries}
 \setbeamerfont{subtitle}{size=\Large}
 \metroset{sectionpage=none}
+% Pied de page (meta: pied: du deck) : à gauche le titre du deck, au milieu auteur · filière · école · date,
+% à droite licence, version et numéro de page ; une icône devant chaque rubrique ; en petit et gris, près du bord
+\providecommand{\piedgauche}{}\providecommand{\piedmilieu}{}\providecommand{\pieddroite}{}
+\setbeamertemplate{footline}{%
+  \begin{beamercolorbox}[wd=\paperwidth,leftskip=0.04\paperwidth,rightskip=0.04\paperwidth,sep=0pt]{footline}%
+    \tiny\color{gris}%
+    \hbox to\dimexpr\paperwidth-0.08\paperwidth\relax{\piedgauche\hfil\piedmilieu\hfil\pieddroite\enspace
+      {\usebeamerfont{page number in head/foot}\usebeamercolor[fg]{page number in head/foot}\insertframenumber/\inserttotalframenumber}}%
+  \end{beamercolorbox}%
+  \vskip5pt}
 
 % ---------- Macros ----------
 % Citation avec attribution révélée sur la couche <n> : filet vertical, sans fond
@@ -61,18 +115,41 @@
     {\small\itshape\color{encre!85!black}#1\par}
     \ifblank{#2}{}{\onslide<#3->{\vspace{3pt}{\footnotesize\color{bleugris}--- \textbf{#2}\par}}}
   \end{tcolorbox}}
+% Palette de rôles (sobre, orthogonale : une teinte par rôle, jamais plus de trois sur un transparent)
+\definecolor{formel}{HTML}{1F4E8F}    % bleu : le formel, la machine, ce qui est calculé ; aussi le texte en gras
+\definecolor{monde}{HTML}{5B8A6B}     % vert sauge : le monde, le langage naturel, les exemples réels
+\definecolor{alerte}{HTML}{9B2C2C}    % bordeaux : attention, piège, limite
+\definecolor{prune}{HTML}{6B4C9A}     % prune : question, ouverture, ce qu'on reverra
+\definecolor{sarcelle}{HTML}{2A7F8F}  % sarcelle : code, données, algorithmes en action
+\definecolor{sable}{HTML}{B9A27A}     % sable : le seul ton chaud, historique, anecdotes, citations
+\colorlet{gras}{formel}\colorlet{vert}{monde}\colorlet{violet}{prune}   % anciens noms
+\colorlet{teinte}{encre}              % teinte du deck (une par UE) : trait des titres, frise ; meta: teinte: du deck
+\newcommand{\gras}[1]{\textbf{\textcolor{gras}{#1}}}
+% Bloc de cours (bloc block du YAML) : filet et titre de la couleur de sa nature (théorème, définition, exemple...)
+% \begin{blocbox}{couleur} ... \end{blocbox}
+\newtcolorbox{blocbox}[1]{enhanced,colback=brume,colframe=brume,boxrule=0pt,arc=0pt,
+  borderline west={2pt}{0pt}{#1},left=8pt,right=8pt,top=4pt,bottom=4pt,boxsep=0pt,before skip=5pt,after skip=4pt}
+% Code, règles, listings : fond sable très clair
+\newtcolorbox{codebox}{enhanced,colback=sable!14!white,colframe=sable!14!white,boxrule=0pt,arc=2pt,
+  left=8pt,right=6pt,top=5pt,bottom=5pt,boxsep=0pt,before skip=6pt,after skip=6pt}
+% Encadré de fin de slide (bloc alert du YAML) : filet et icône de la couleur du type, fond légèrement teinté
+% \begin{alertbox}{couleur}{icône} ... \end{alertbox}
+\newtcolorbox{alertbox}[2]{enhanced,colback=#1!6!white,colframe=#1!6!white,boxrule=0pt,arc=0pt,
+  borderline west={2pt}{0pt}{#1},left=30pt,right=8pt,top=6pt,bottom=6pt,boxsep=0pt,before skip=9pt,after skip=4pt,
+  overlay={\node[anchor=center] at ([xshift=16pt]frame.west) {\color{#1}\large #2};}}
 % Grand chiffre + libellé
 \newcommand{\stat}[2]{%
   \parbox[t]{0.2\linewidth}{\color{accent}\fontsize{22}{24}\selectfont\bfseries #1}%
   \parbox[t]{0.78\linewidth}{\small\raggedright\vspace{1pt}#2}\par\vspace{5pt}}
 \newcommand{\source}[1]{\par\vspace{-2pt}{\tiny\color{gris}Source : #1}}
 % Page de section : grand titre sobre
-\newcommand{\sectionframe}[2]{%
+\newcommand{\sectionframe}[3][]{%  [nom court]{nom long}{sous-titre}
+  \ifblank{#1}{\section{#2}}{\section[#1]{#2}}%
   \begin{frame}[plain]
     \vspace*{0.28\textheight}
-    \hspace*{0.06\paperwidth}{\fontsize{30}{34}\selectfont\bfseries\color{bleugris}#1\par}
+    \hspace*{0.06\paperwidth}{\fontsize{30}{34}\selectfont\bfseries\color{bleugris}#2\par}
     \vspace{6pt}\hspace*{0.06\paperwidth}{\color{encre}\rule{0.88\paperwidth}{1.1pt}\par}
-    \vspace{6pt}\hspace*{0.06\paperwidth}{\large\color{gris}#2\par}
+    \vspace{6pt}\hspace*{0.06\paperwidth}{\large\color{gris}#3\par}
   \end{frame}}
 % Image plein écran (frame sans titre)
 \newcommand{\fullimage}[2][]{%
@@ -103,4 +180,12 @@
   boitevide/.style={draw=bleugris,rounded corners=3pt,inner sep=6pt,align=center,font=\small},
   fleche/.style={-{Latex[length=2.5mm]},bleugris,line width=1pt},
   etiq/.style={font=\footnotesize,color=gris,align=center},
+  % les deux mondes du cours : le monde réel (sauge) et l'intérieur formel (bleu)
+  mondebox/.style={draw=monde,dashed,rounded corners=8pt,line width=0.8pt},
+  formelbox/.style={draw=formel,fill=formel!6!white,rounded corners=6pt,line width=1.2pt},
+  fait/.style={draw=monde,fill=monde!10!white,rounded corners=9pt,inner sep=4pt,align=center,font=\small},
+  regle/.style={circle,draw=formel,fill=white,inner sep=2pt,font=\scriptsize\bfseries,color=formel},
+  organe/.style={draw=formel,fill=white,rounded corners=3pt,inner sep=4pt,font=\small\bfseries},
+  flux/.style={-{Latex[length=3mm]},line width=1.1pt,encre},
+  coupe/.style={line width=1.6pt,sarcelle,dash pattern=on 4pt off 2pt},
 }

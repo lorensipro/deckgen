@@ -47,6 +47,8 @@ deck --no-pdf                     # écrit seulement build/<nom>.tex
 ```bash
 deck --slide slides/bases.yaml:20             # le transparent qui contient la ligne 20
 deck --slide slides/bases.yaml:20 --lang en --audience public
+# sans --deck, l'aperçu prend le deck-*.yaml dont parts: contient le fichier (sinon deck.yaml) ;
+# --origine FICHIER.yaml donne le vrai fichier quand on compile une copie (plugin VS Code)
 deck --make-format                            # re-précompiler le préambule (après modification de preamble.tex)
 ```
 
@@ -81,7 +83,7 @@ Les figures et `references.yaml` sont partagés.
 
 | Fichier | Rôle |
 |---|---|
-| `deck.yaml` | métadonnées (titre, auteur, date), langues, audiences, ordre des parties (`parts:`), `slides_dir:`, `preamble:` |
+| `deck.yaml` | métadonnées (titre, auteur, date, `fontsize:` 10pt par défaut, 11pt ou 12pt pour un deck aéré ; `pied:` pied de page en petit gris près du bord : `{auteur:, filiere:, ecole:, date:}` (au milieu, une icône par rubrique ; le titre du deck à gauche ; une simple chaîne va au milieu), suivi à droite de `licence:` (aussi sur la page de titre) et d'un identifiant de version `vAAAA.MM.JJ-empreinte` calculé sur le contenu ; ces trois éléments vont aussi dans les métadonnées du PDF (titre, auteur, sujet, mots-clés), traceur discret des copies ; `teinte:` couleur du deck pour le trait des titres et la frise (`formel`, `sarcelle`, `prune`... une par UE) ; `navigation: true` pour la frise d'avancement en haut des transparents : un point par transparent de la section courante, puis son nom court entre parenthèses), langues, audiences, ordre des parties (`parts:`), `slides_dir:`, `preamble:` |
 | `slides/*.yaml` | une partie par fichier, liste de transparents |
 | `figures/` | images (PDF vectoriel quand c'est possible) ; `figures/tikz/` les schémas TikZ ; `figures/gen/` les figures produites par script |
 | `scripts/` | scripts de figures |
@@ -267,6 +269,7 @@ dans `deck.yaml` (`audiences:`).
   subtitle: ...           # ligne grise sous le titre
   notes: ...              # notes du présentateur
   background: black       # couleur de fond de la page (optionnel)
+  frise: false            # pas de point dans la frise d'avancement (animation, enchaînement rapide)
   shrink: 15              # dépannage seulement : réduit le contenu d'au plus 15 %. Règle du projet : texte à taille
                           # unique, on coupe un transparent trop chargé en deux plutôt que de réduire
   only: [...] / except: [...]
@@ -279,6 +282,7 @@ Formes courtes :
 ```yaml
 - section: Apprendre                 # page de section
   subtitle: (programmer l'intuition)
+  court: Apprendre                   # nom court pour la frise d'avancement (navigation: true)
 - image: figures/roi-ia.jpg          # image plein écran
   full: true
 - title: Quels métiers impactés ?    # une seule image avec source
@@ -339,8 +343,8 @@ LaTeX dans le fichier est rapportée avec sa ligne (`tex_line`).
 | figure par script | `- figure: scripts/x.py` (+ `args: {...}`, `deps: [...]`, `format: png` ou `tex`, et les options de `image`) |
 | TikZ externe | `- tikz: figures/tikz/x.tikz` (+ `width`, `height`, `source`) ; macros `\T{fr}{en}` et `\ifaud{public}{..}{..}` dans le fichier |
 | rangée d'images | `- images: [{file: a.png, height: 0.4}, {file: b.png, height: 0.4}]` (+ `gap: 10pt`) |
-| alerte | `- alert: "Texte en évidence"` (+ `title:`, `align: left`, `bold: false`) |
-| bloc titré | `- block: {title: Dangers, content: [...]}` ou `{title: ..., text: ...}` |
+| alerte | `- alert: "Texte en évidence"` (+ `type:` parmi `retenir` (défaut), `attention`, `bien`, `question`, `idee`, `definition`, `exemple`, `histoire`, `demo`, `piege`, `reference`, `suite`, `exercice` ; `icon:` pour forcer une icône fontawesome5 ; `title:`, `align: center` (fer à gauche par défaut), `bold: false`) ; encadré `alertbox` du préambule : filet et icône de la couleur du type, fond teinté. Un alert en dernier bloc du transparent est précédé d'un ressort vertical qui répartit un peu l'espace libre. Table `ALERT_TYPES` de `build.py` |
+| bloc titré | `- block: {title: Dangers, content: [...]}` ou `{title: ..., text: ...}` (+ `type:` parmi `theoreme`, `definition`, `exemple`, `objectif`, `remarque`, `code`, `histoire`, `monde`, `formel` : couleur du filet et du titre, table `BLOCK_TYPES`) |
 | citation | `- quote: {text: ..., author: ..., reveal: 2}` (l'auteur apparaît à la couche 2) |
 | grands chiffres | `- stats: [{value: "99 %", text: des étudiants...}, ...]` |
 | colonnes | `- layout: texte-image` puis `columns: [{content: [...]}, {content: [...]}]` (+ `valign: c`) ; dispositions nommées : `egal` (48/48), `texte-image` (60/36), `image-texte` (36/60), définies dans `LAYOUTS` de `build.py`. `width:` par colonne reste possible mais à éviter : peu de dispositions = style constant |
