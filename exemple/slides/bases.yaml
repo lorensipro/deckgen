@@ -1,0 +1,35 @@
+# Les blocs les plus courants. Aperçu d'un transparent : python3 ../build.py --slide slides/bases.yaml:LIGNE
+
+- section: {fr: Les bases, en: The basics}
+
+- title: {fr: Texte et listes, en: Text and lists}
+  subtitle: {fr: "Mini-markdown : **gras**, *italique*, `code`, liens", en: "Mini-markdown: **bold**, *italics*, `code`, links"}
+  content:
+    - text: {fr: "Un paragraphe avec du **gras**, de l'*italique* et un [lien](https://ctan.org).", en: "A paragraph with **bold**, *italics* and a [link](https://ctan.org)."}
+    - bullets:
+        - {fr: Premier point, en: First item}
+        - text: {fr: Deuxième point, en: Second item}
+          sub:
+            - {fr: "Sous-point, en {{gris:gris}}", en: "Sub-item, in {{gris:grey}}"}
+        - {text: {fr: Réservé aux experts, en: Experts only}, only: [experts]}
+    - alert: {fr: Un message à retenir, en: A take-home message}
+      step: 2
+
+- title: {fr: Colonnes et citation, en: Columns and a quote}
+  content:
+    - columns:
+        - width: 0.55
+          content:
+            - quote: {text: {fr: "Toute chaîne peut être bilingue.", en: "Any string can be bilingual."}, author: README}
+        - width: 0.41
+          content:
+            - numbered:
+                - {fr: Écrire le YAML, en: Write the YAML}
+                - {fr: Lancer build.py, en: Run build.py}
+                - {fr: Projeter le PDF, en: Show the PDF}
+      valign: c
+  notes: {fr: "Les notes du présentateur ne sont pas projetées.", en: "Speaker notes are not shown."}
+
+- title: {fr: Un transparent masqué, en: A hidden slide}
+  hide: true
+  meta: {summary: "Absent du PDF, sauf avec --show-hidden"}

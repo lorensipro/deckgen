@@ -1,0 +1,19 @@
+% Gabarit « cahier » : transparent vide avec une grille légère pour prendre des notes manuscrites.
+% Paramètres : title (défaut : Notes), style (grille | lignes | points), pas (défaut : 5mm),
+%              couleur (défaut : gris!30). Exemple : - {template: cahier, title: Exercice 2, style: lignes}
+% Le dessin est relatif au corps du transparent (pas de « remember picture ») : une seule passe suffit.
+\begin{frame}[t]{@@title|Notes@@}
+  \begin{tikzpicture}[overlay]
+    \def\pas{@@pas|5mm@@}
+    \clip (-3cm,0.5cm) rectangle (\paperwidth,-\textheight);
+    \ifdefstring{\cahierstyle}{lignes}{%
+      \foreach \y in {0,1,...,40}{\draw[@@couleur|gris!30@@,line width=0.3pt] (-3cm,0.5cm-\y*\pas) -- (\paperwidth,0.5cm-\y*\pas);}
+    }{%
+    \ifdefstring{\cahierstyle}{points}{%
+      \foreach \x in {0,1,...,70}{\foreach \y in {0,1,...,40}{\fill[@@couleur|gris!30@@] (-3cm+\x*\pas,0.5cm-\y*\pas) circle (0.25pt);}}
+    }{%
+      \foreach \x in {0,1,...,70}{\draw[@@couleur|gris!30@@,line width=0.3pt] (-3cm+\x*\pas,0.5cm) -- (-3cm+\x*\pas,-\textheight);}
+      \foreach \y in {0,1,...,40}{\draw[@@couleur|gris!30@@,line width=0.3pt] (-3cm,0.5cm-\y*\pas) -- (\paperwidth,0.5cm-\y*\pas);}
+    }}
+  \end{tikzpicture}
+\end{frame}

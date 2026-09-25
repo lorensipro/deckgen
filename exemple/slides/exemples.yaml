@@ -1,0 +1,21 @@
+# Figures produites par script, schémas TikZ externes et gabarits.
+# Aperçu : python3 ../build.py --slide slides/exemples.yaml:5
+
+- title: {fr: Figure produite par un script, en: A script-generated figure}
+  subtitle: {fr: "`scripts/exemple_sigmoide.py`, relancé seulement s'il a changé", en: "`scripts/exemple_sigmoide.py`, rerun only when it changes"}
+  content:
+    - figure: scripts/exemple_sigmoide.py
+      args: {seuil: 22}
+      height: 0.62
+      source: {fr: "courbe jouet, matplotlib, PDF vectoriel", en: "toy curve, matplotlib, vector PDF"}
+
+- title: {fr: Schéma TikZ externe, en: External TikZ diagram}
+  subtitle: {fr: "`figures/tikz/syntaxe-semantique.tikz`, avec \\T{fr}{en} et \\ifaud{public}{..}{..} dedans", en: "`figures/tikz/syntaxe-semantique.tikz`, using \\T{fr}{en} and \\ifaud{public}{..}{..} inside"}
+  content:
+    - tikz: figures/tikz/syntaxe-semantique.tikz
+      width: 0.85
+
+# Gabarits : - template: nom, puis les paramètres. Voir templates/.
+- template: cahier
+- {template: cahier, title: "Exercice 2 : à vous", style: lignes, pas: 8mm}
+- {template: cahier, title: Brouillon, style: points, couleur: "bleugris!35"}

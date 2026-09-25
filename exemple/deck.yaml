@@ -1,0 +1,18 @@
+# Deck d'exemple : python3 ../build.py            (depuis ce dossier)  -> exemple-fr.pdf
+#                  python3 ../build.py --lang en --audience public    -> exemple-en-public.pdf
+name: exemple
+lang: fr
+langs: [fr, en]
+audiences: [public, experts]
+slides_dir: slides
+titlepage: true
+
+meta:
+  title: {fr: Un deck d'exemple, en: A sample deck}
+  subtitle: {fr: "Des fichiers YAML vers Beamer", en: "From YAML files to Beamer"}
+  author: Prénom Nom
+  date: {fr: Septembre 2026, en: September 2026}
+
+parts:
+  - bases
+  - exemples

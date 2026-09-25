@@ -1,0 +1,5 @@
+{
+  "files.exclude": { "build/**/*.aux": true, "build/**/*.log": true, "build/**/*.nav": true,
+                     "build/**/*.out": true, "build/**/*.snm": true, "build/**/*.toc": true,
+                     "build/**/*.fmt": true, "__pycache__": true }
+}

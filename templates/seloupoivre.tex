@@ -1,0 +1,18 @@
+% Gabarit « Sel ou poivre » : IA / Y'a pas / Les deux, sur fond noir (d'après quizz-boardgames-1.tex).
+% Paramètres : question, reponse (lettres correctes parmi A B C, révélées à la couche 2 ; vide = pas de révélation).
+{\setbeamercolor{background canvas}{bg=black}
+\renewcommand{\quizreponses}{@@reponse|@@}
+\begin{frame}[plain]
+  \color{lightgray}
+  \begin{center}
+    {\fontsize{30}{34}\selectfont\bfseries\color{quizfonce}Sel ou Poivre {\normalsize ?}}\\[4pt]
+    {\LARGE\bfseries\itshape\color{quizclair}IA ou Y'a pas (ou les deux) ?}
+  \end{center}
+  \vfill
+  {\LARGE\bfseries\itshape @@question@@}
+  \vfill
+  \quizopt{A}{I.A.}
+  \quizopt{B}{Y'a pas}
+  \quizopt{C}{Les deux}
+  \vfill
+\end{frame}}

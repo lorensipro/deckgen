@@ -1,0 +1,106 @@
+% Préambule Beamer commun (thème, couleurs, macros). Inclus par build.py.
+% Ne contient ni \documentclass ni les métadonnées : voir deck.yaml.
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[@@BABEL@@]{babel}
+\usepackage[sfdefault]{FiraSans}
+\usepackage{FiraMono}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit}
+\usepackage{fontawesome5}
+\usepackage[most]{tcolorbox}
+\usepackage{etoolbox}
+\usepackage{xstring}
+\usepackage{booktabs,multirow,colortbl}
+\usepackage{hyperref}
+
+% ---------- Thème ----------
+\usetheme[progressbar=none,numbering=fraction,block=fill]{metropolis}
+\definecolor{encre}{HTML}{1B2A41}     % bleu nuit : trait sous les titres, texte fort
+\definecolor{bleugris}{HTML}{4A5D7A}  % titres de frames, accents
+\definecolor{gris}{HTML}{6B7280}      % texte secondaire, sources
+\definecolor{brume}{HTML}{EEF1F5}     % fond des blocs (gris-bleu très clair)
+\colorlet{accent}{bleugris}
+\definecolor{quizfonce}{rgb}{0.183,0.379,0.64}   % quiz : bleu foncé (titres)
+\definecolor{quizclair}{rgb}{0.191,0.726,0.859}  % quiz : bleu clair (sous-titre, lettres)
+\definecolor{quizbon}{HTML}{3CB371}               % quiz : bonne réponse révélée
+\setbeamercolor{normal text}{fg=encre!90!black,bg=white}
+\setbeamercolor{alerted text}{fg=bleugris}
+\setbeamercolor{frametitle}{bg=white,fg=bleugris}
+\setbeamercolor{progress bar}{fg=bleugris,bg=encre!20}
+\setbeamercolor{title separator}{fg=encre}
+\setbeamercolor{block title}{bg=brume,fg=encre}
+\setbeamercolor{block body}{bg=brume}
+\setbeamercolor{block title alerted}{bg=brume,fg=bleugris}
+\setbeamercolor{block body alerted}{bg=brume,fg=encre}
+\setbeamertemplate{itemize item}{\color{accent}\raisebox{0.35ex}{\rule{0.55ex}{0.55ex}}}
+\setbeamertemplate{itemize subitem}{\color{accent}\raisebox{0.35ex}{\rule{0.55ex}{0.15ex}}}
+\setbeamerfont{frametitle}{size=\Large,series=\bfseries}
+% Titre sobre : texte bleu-gris gras, remonté, trait bleu nuit presque pleine largeur
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip
+  \vspace*{5pt}%
+  \begin{beamercolorbox}[wd=\paperwidth,leftskip=0.04\paperwidth,rightskip=0.04\paperwidth,sep=0pt]{frametitle}%
+    \usebeamerfont{frametitle}\insertframetitle\strut
+  \end{beamercolorbox}%
+  \vspace*{3pt}%
+  \hspace*{0.04\paperwidth}{\color{encre}\rule{0.92\paperwidth}{1.1pt}}%
+  \vspace*{4pt}%
+}
+\setbeamerfont{title}{size=\Huge,series=\bfseries}
+\setbeamerfont{subtitle}{size=\Large}
+\metroset{sectionpage=none}
+
+% ---------- Macros ----------
+% Citation avec attribution révélée sur la couche <n> : filet vertical, sans fond
+\newcommand{\citer}[3]{% {texte}{auteur}{couche}
+  \begin{tcolorbox}[blanker,borderline west={1.6pt}{0pt}{bleugris},
+      left=12pt,right=6pt,top=2pt,bottom=2pt,before skip=7pt,after skip=7pt]
+    {\small\itshape\color{encre!85!black}#1\par}
+    \ifblank{#2}{}{\onslide<#3->{\vspace{3pt}{\footnotesize\color{bleugris}--- \textbf{#2}\par}}}
+  \end{tcolorbox}}
+% Grand chiffre + libellé
+\newcommand{\stat}[2]{%
+  \parbox[t]{0.2\linewidth}{\color{accent}\fontsize{22}{24}\selectfont\bfseries #1}%
+  \parbox[t]{0.78\linewidth}{\small\raggedright\vspace{1pt}#2}\par\vspace{5pt}}
+\newcommand{\source}[1]{\par\vspace{-2pt}{\tiny\color{gris}Source : #1}}
+% Page de section : grand titre sobre
+\newcommand{\sectionframe}[2]{%
+  \begin{frame}[plain]
+    \vspace*{0.28\textheight}
+    \hspace*{0.06\paperwidth}{\fontsize{30}{34}\selectfont\bfseries\color{bleugris}#1\par}
+    \vspace{6pt}\hspace*{0.06\paperwidth}{\color{encre}\rule{0.88\paperwidth}{1.1pt}\par}
+    \vspace{6pt}\hspace*{0.06\paperwidth}{\large\color{gris}#2\par}
+  \end{frame}}
+% Image plein écran (frame sans titre)
+\newcommand{\fullimage}[2][]{%
+  \begin{frame}[plain]
+    \begin{tikzpicture}[remember picture,overlay]
+      \node at (current page.center){\includegraphics[width=0.96\paperwidth,height=0.96\paperheight,keepaspectratio,#1]{#2}};
+    \end{tikzpicture}
+  \end{frame}}
+% Emplacement réservé pour une figure EMF non convertie : {fichier}{largeur}{hauteur}
+\newcommand{\emfplaceholder}[3]{%
+  \begin{tikzpicture}
+    \node[draw=bleugris!50,fill=brume,rounded corners=3pt,line width=0.6pt,
+          minimum width=#2,minimum height=#3,text width={#2-0.5cm},
+          align=center,inner sep=3pt,font=\tiny]
+      {{\color{bleugris}\small\faImage[regular]}\\[2pt]
+       {\color{bleugris}Figure à intégrer : \texttt{#1}}\\[1pt]
+       {\color{gris}(image EMF du PowerPoint, non convertible ici)}};
+  \end{tikzpicture}}
+% Quiz : \quizopt{A}{texte} ; à la couche 2, la lettre est verte si elle figure dans \quizreponses
+\newcommand{\quizreponses}{}
+\newcommand{\quizopt}[2]{%
+  \par\vspace{0.45em}%
+  {\huge\bfseries\IfSubStr{\quizreponses}{#1}{\alt<2>{\color{quizbon}}{\color{quizclair}}}{\color{quizclair}}#1}\quad
+  {\Large\itshape\IfSubStr{\quizreponses}{#1}{\alt<2>{\color{quizbon}}{\color{lightgray}}}{\color{lightgray}}#2}}
+% Styles TikZ communs
+\tikzset{
+  boite/.style={draw=bleugris,fill=brume,rounded corners=3pt,inner sep=6pt,align=center,font=\small},
+  boitevide/.style={draw=bleugris,rounded corners=3pt,inner sep=6pt,align=center,font=\small},
+  fleche/.style={-{Latex[length=2.5mm]},bleugris,line width=1pt},
+  etiq/.style={font=\footnotesize,color=gris,align=center},
+}

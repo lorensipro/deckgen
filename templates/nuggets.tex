@@ -1,0 +1,17 @@
+% Gabarit « Nuggets » : QCM à quatre réponses sur fond noir (d'après quizz-boardgames-1.tex).
+% Paramètres : question, a, b, c, d, reponse (lettres correctes, ex. "C" ou "AC" ; révélées à la couche 2 ;
+%              vide = pas de révélation).
+{\setbeamercolor{background canvas}{bg=black}
+\renewcommand{\quizreponses}{@@reponse|@@}
+\begin{frame}[plain]
+  \color{lightgray}
+  \begin{center}{\fontsize{34}{38}\selectfont\bfseries\color{quizfonce}Nuggets}\end{center}
+  \vfill
+  {\LARGE\bfseries\itshape @@question@@}
+  \vfill
+  \quizopt{A}{@@a@@}
+  \quizopt{B}{@@b@@}
+  \quizopt{C}{@@c@@}
+  \quizopt{D}{@@d@@}
+  \vfill
+\end{frame}}

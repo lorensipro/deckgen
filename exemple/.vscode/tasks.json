@@ -1,0 +1,35 @@
+{
+  // Aperçu du transparent sous le curseur : Terminal > Exécuter la tâche > « Aperçu du transparent »
+  // ou le raccourci défini dans README.md. Le résultat est build/preview/slide.png (et slide.pdf) :
+  // ouvrez-le une fois dans un panneau à droite, VS Code le rafraîchit à chaque exécution.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Aperçu du transparent",
+      "type": "shell",
+      "command": "python3",
+      "args": ["${workspaceFolder}/../build.py", "--slide", "${relativeFile}:${lineNumber}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "silent", "panel": "shared", "clear": true, "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "Aperçu du transparent (anglais)",
+      "type": "shell",
+      "command": "python3",
+      "args": ["${workspaceFolder}/../build.py", "--slide", "${relativeFile}:${lineNumber}", "--lang", "en"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "silent", "panel": "shared", "clear": true, "showReuseMessage": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "Générer le diaporama complet (fr)",
+      "type": "shell",
+      "command": "python3",
+      "args": ["${workspaceFolder}/../build.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ]
+}

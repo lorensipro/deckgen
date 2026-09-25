@@ -1,0 +1,35 @@
+{
+  "name": "slide-preview",
+  "displayName": "Slide Preview (YAML → Beamer)",
+  "description": "Aperçu du transparent Beamer sous le curseur dans un fichier YAML, via build.py.",
+  "version": "0.1.0",
+  "publisher": "laurent",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:yaml", "onLanguage:latex", "onLanguage:tex"],
+  "contributes": {
+    "commands": [
+      { "command": "slidePreview.open",    "title": "Slide Preview : ouvrir l'aperçu à côté" },
+      { "command": "slidePreview.refresh", "title": "Slide Preview : rafraîchir" }
+    ],
+    "keybindings": [
+      { "command": "slidePreview.open", "key": "ctrl+k v", "mac": "cmd+k v", "when": "editorLangId == yaml || resourceExtname == .tikz || editorLangId == latex" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "slidePreview.open", "when": "editorLangId == yaml || resourceExtname == .tikz || editorLangId == latex", "group": "navigation" }
+      ]
+    },
+    "configuration": {
+      "title": "Slide Preview",
+      "properties": {
+        "slidePreview.buildScript":  { "type": "string",  "default": "", "description": "Chemin de build.py (vide : celui du dépôt deckgen qui contient ce plugin)." },
+        "slidePreview.python":       { "type": "string",  "default": "python3", "description": "Interpréteur Python utilisé pour build.py." },
+        "slidePreview.cursorDelay":  { "type": "number",  "default": 250,  "description": "Délai (ms) après un déplacement du curseur vers un autre transparent." },
+        "slidePreview.typingDelay":  { "type": "number",  "default": 900,  "description": "Délai (ms) après une frappe avant de recompiler le transparent courant." },
+        "slidePreview.renderOnType": { "type": "boolean", "default": true, "description": "Recompiler pendant la frappe (sinon seulement à la sauvegarde et au changement de transparent)." }
+      }
+    }
+  }
+}

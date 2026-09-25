@@ -1,0 +1,15 @@
+% Schéma syntaxe / sémantique. \T{fr}{en} choisit la langue, \ifaud{public}{..}{..} l'audience.
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[boite,minimum width=2.6cm] (p1) at (3,2.2) {\T{Phrases}{Sentences}};
+  \node[boite,minimum width=2.6cm] (p2) at (9.5,2.2) {\T{Phrases}{Sentences}};
+  \node[boite,minimum width=2.6cm] (f1) at (3,-1.2) {\T{Faits}{Facts}};
+  \node[boite,minimum width=2.6cm] (f2) at (9.5,-1.2) {\T{Faits}{Facts}};
+  \draw[fleche] (p1) -- node[above,etiq] {\T{Entraîne (par un calcul)}{Entails (by computation)}} (p2);
+  \draw[fleche] (f1) -- node[below,etiq] {\T{Implique (dans le monde)}{Implies (in the world)}} (f2);
+  \draw[fleche] (p1) -- node[right,etiq] {\T{Sémantique}{Semantics}} (f1);
+  \draw[fleche] (p2) -- node[right,etiq] {\T{Sémantique}{Semantics}} (f2);
+  \node[anchor=east,font=\small\bfseries,color=bleugris,align=right] at (1.4,2.2) {\T{Représentation\\syntaxique}{Syntactic\\representation}};
+  \node[anchor=east,font=\small\bfseries,color=bleugris,align=right] at (1.4,-1.2) {\T{Monde\\réel}{Real\\world}};
+  \ifaud{public}{}{%
+    \node[etiq,align=left,anchor=west] at (11.2,0.5) {\T{Version\\non public}{Non-public\\version}};}
+\end{tikzpicture}
