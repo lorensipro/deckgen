@@ -43,6 +43,38 @@
 % section courante (plein pour le transparent en cours), puis le nom court de la section entre parenthèses.
 % Un transparent avec frise: false (animations, enchaînements rapides) n'écrit pas de point.
 \newif\ifnavigation
+% Respiration (respiration: true du YAML) : anecdote, histoire, aparté ; titre et trait en sable, icône de tasse,
+% point de la frise en sable. \respiration{...} entoure le transparent et note son rang dans le .nav.
+\newif\ifrespiration
+% Hauteur (hauteur: true du YAML) : on prend de la hauteur, philosophie, recul ; titre et trait en prune, icône de plume,
+% point prune dans la frise, et une montgolfière qui décolle du trait.
+\newif\ifhauteur
+\newcommand{\montgolfiere}{\begin{tikzpicture}[x=1pt,y=1pt,baseline=0pt]
+  \draw[prune!70,line width=0.4pt] (5.5,2) -- (5.5,7);           % l'amarre, encore attachée au trait
+  \fill[prune] (3.6,1.6) rectangle (7.4,4.2);                     % la nacelle
+  \draw[prune!80,line width=0.4pt] (3.8,4.2) -- (1.6,10) (7.2,4.2) -- (9.4,10);   % les suspentes
+  \fill[prune!80] (5.5,14) circle (6.2);                          % le ballon
+  \fill[prune!45] (3.6,15.5) ellipse (2.2 and 3);                 % le reflet
+  \fill[prune!80] (4.2,8.3) -- (6.8,8.3) -- (5.5,10.5) -- cycle;  % la jupe
+\end{tikzpicture}}
+% La bulle qui somnole sur le trait du titre : deux ronds qui montent vers un « z z Z »
+\newcommand{\bullezzz}{\begin{tikzpicture}[x=1pt,y=1pt,baseline=0pt]
+  \fill[sable!45] (0,1.5) circle (1.3);
+  \fill[sable!45] (3.5,5) circle (2);
+  \node[rounded corners=4pt,inner sep=2.4pt,font=\tiny\bfseries,rotate=6,draw=sable,fill=white,text=sable] at (14,13) {z\,z\,Z};
+\end{tikzpicture}}
+\makeatletter
+\def\deckgenrespi#1#2{}   % ligne du .nav : section, rang du transparent (redéfinie pendant le dessin de la frise)
+\newcommand{\respiration}[1]{\begingroup\respirationtrue
+  \let\deckgen@wse\beamer@writeslidentry
+  \def\beamer@writeslidentry{\addtocontents{nav}{\protect\headcommand{\protect\deckgenrespi{\the\c@section}{\the\c@subsectionslide}}}\deckgen@wse}%
+  #1\endgroup}
+\def\deckgenhaut#1#2{}
+\newcommand{\hauteur}[1]{\begingroup\hauteurtrue
+  \let\deckgen@wseh\beamer@writeslidentry
+  \def\beamer@writeslidentry{\addtocontents{nav}{\protect\headcommand{\protect\deckgenhaut{\the\c@section}{\the\c@subsectionslide}}}\deckgen@wseh}%
+  #1\endgroup}
+\makeatother
 \setbeamersize{mini frame size=.08cm,mini frame offset=.025cm}
 \makeatletter
 \newcount\deckgen@courant
@@ -52,16 +84,19 @@
 \def\deckgendots{\begingroup\tiny
   \def\subsectionentry##1##2##3##4##5{}%
   % passe 1 : noms des autres sections, et le point « en cours » = dernier transparent compté ne dépassant pas celui-ci
-  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax
+  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax\def\deckgen@respis{,}\def\deckgen@hauts{,}%
+  \def\deckgenrespi##1##2{\edef\deckgen@respis{\deckgen@respis##1-##2,}}%
+  \def\deckgenhaut##1##2{\edef\deckgen@hauts{\deckgen@hauts##1-##2,}}%
   \def\sectionentry##1##2##3##4##5{\ifnum##1<\c@section\relax\deckgen@avant=\expandafter{\the\deckgen@avant{\color{gris}##2}\hskip8pt plus1fil}\fi
     \ifnum##1>\c@section\relax\deckgen@apres=\expandafter{\the\deckgen@apres\hskip8pt plus1fil{\color{gris}##2}}\fi}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax\ifnum##3>\c@subsectionslide\else\deckgen@courant=##3\relax\fi\fi}%
   \dohead
   % passe 2 : les points
-  \def\sectionentry##1##2##3##4##5{}%
+  \def\sectionentry##1##2##3##4##5{}\def\deckgenrespi##1##2{}\def\deckgenhaut##1##2{}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax
-    \ifnum\deckgen@courant=##3\relax{\color{teinte}\usebeamertemplate{mini frame}}%
-    \else{\color{bleugris!60}\usebeamertemplate{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
+    \IfSubStr{\deckgen@respis}{,##1-##3,}{\colorlet{deckgen@pt}{sable}}{\IfSubStr{\deckgen@hauts}{,##1-##3,}{\colorlet{deckgen@pt}{prune}}{\colorlet{deckgen@pt}{teinte}}}%
+    \ifnum\deckgen@courant=##3\relax{\color{deckgen@pt}\usebeamertemplate{mini frame}}%
+    \else{\color{deckgen@pt!60}\usebeamertemplate{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
   \setbox\deckgen@dotsbox=\hbox{\dohead\unskip}%
   % si les points et les noms ne tiennent pas sur la ligne, on resserre les points (jusqu'à 80 % de leur écart)
   \setbox\deckgen@avantbox=\hbox{\the\deckgen@avant}\setbox\deckgen@apresbox=\hbox{\the\deckgen@apres}%
@@ -87,10 +122,12 @@
     \vspace*{5pt}%
   \fi
   \begin{beamercolorbox}[wd=\paperwidth,leftskip=0.04\paperwidth,rightskip=0.04\paperwidth,sep=0pt]{frametitle}%
-    \usebeamerfont{frametitle}\insertframetitle\strut
+    \usebeamerfont{frametitle}\ifrespiration{\color{sable}\faCoffee\enspace}\fi\ifhauteur{\color{prune}\faFeather\enspace}\fi\insertframetitle\strut
   \end{beamercolorbox}%
   \vspace*{3pt}%
-  \hspace*{0.04\paperwidth}{\color{teinte}\rule{0.92\paperwidth}{1.1pt}}%
+  \hspace*{0.04\paperwidth}{\color{\ifrespiration sable\else\ifhauteur prune\else teinte\fi\fi}\rule{0.92\paperwidth}{1.1pt}}%
+  \ifrespiration\llap{\smash{\raisebox{1pt}{\bullezzz}}\hspace{0.12\paperwidth}}\fi%
+  \ifhauteur\llap{\smash{\raisebox{1pt}{\montgolfiere}}\hspace{0.12\paperwidth}}\fi%
   \vspace*{4pt}%
 }
 \setbeamerfont{title}{size=\Huge,series=\bfseries}
@@ -125,10 +162,26 @@
 \colorlet{gras}{formel}\colorlet{vert}{monde}\colorlet{violet}{prune}   % anciens noms
 \colorlet{teinte}{encre}              % teinte du deck (une par UE) : trait des titres, frise ; meta: teinte: du deck
 \newcommand{\gras}[1]{\textbf{\textcolor{gras}{#1}}}
+% Ce qui est dit en langage naturel (entre guillemets dans le YAML) : vert sombre du monde, guillemets de la langue
+\colorlet{parole}{monde!70!black}
+\newcommand{\dire}[1]{{\color{parole}\og #1\fg{}}}
 % Bloc de cours (bloc block du YAML) : filet et titre de la couleur de sa nature (théorème, définition, exemple...)
 % \begin{blocbox}{couleur} ... \end{blocbox}
 \newtcolorbox{blocbox}[1]{enhanced,colback=brume,colframe=brume,boxrule=0pt,arc=0pt,
   borderline west={2pt}{0pt}{#1},left=8pt,right=8pt,top=4pt,bottom=4pt,boxsep=0pt,before skip=5pt,after skip=4pt}
+% Bases de règles : pastilles de faits (brume), d'effets (sauge) et de négations (bordeaux), badge de règle (bleu)
+% \begin{regles} \regle{1}{\fait{a}\ret\fait{b}}{\effet{c}} ... \end{regles}
+\newtcbox{\fait}{on line,colback=brume,colframe=bleugris!55,boxrule=0.5pt,arc=4pt,left=3pt,right=3pt,top=0.8pt,bottom=0.8pt,boxsep=0pt,fontupper=\ttfamily}
+\newtcbox{\effet}{on line,colback=monde!12!white,colframe=monde,boxrule=0.5pt,arc=4pt,left=3pt,right=3pt,top=0.8pt,bottom=0.8pt,boxsep=0pt,fontupper=\ttfamily}
+\newtcbox{\nonpill}{on line,colback=alerte!7!white,colframe=alerte!65,boxrule=0.5pt,arc=4pt,left=3pt,right=3pt,top=0.8pt,bottom=0.8pt,boxsep=0pt,fontupper=\ttfamily}
+\newcommand{\non}[1]{\nonpill{{\color{alerte}\boldmath$\lnot$}\,#1}}
+\newcommand{\rbadge}[1]{\tikz[baseline=(b.base)]\node[circle,fill=formel,text=white,font=\scriptsize\bfseries,inner sep=0.8pt,minimum size=10.5pt](b){#1};}
+\newcommand{\ret}{{\itshape\color{gris}\,\T{et}{and}\,}}
+\newcommand{\rou}{{\itshape\color{alerte}\,\T{ou}{or}\,}}
+\newcommand{\ralors}{\ {\color{formel}\boldmath$\Rightarrow$}\ }
+\newcommand{\rsi}{{\itshape\color{gris}\T{si}{if}\ }}
+\newenvironment{regles}{\par\begingroup\setlength{\tabcolsep}{2pt}\renewcommand{\arraystretch}{1.25}\begin{tabular}{@{}r@{\ \ }l@{}}}{\end{tabular}\endgroup\par}
+\newcommand{\regle}[3]{\rbadge{#1} & #2 \ralors #3\\}
 % Code, règles, listings : fond sable très clair
 \newtcolorbox{codebox}{enhanced,colback=sable!14!white,colframe=sable!14!white,boxrule=0pt,arc=2pt,
   left=8pt,right=6pt,top=5pt,bottom=5pt,boxsep=0pt,before skip=6pt,after skip=6pt}

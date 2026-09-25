@@ -270,6 +270,8 @@ dans `deck.yaml` (`audiences:`).
   notes: ...              # notes du présentateur
   background: black       # couleur de fond de la page (optionnel)
   frise: false            # pas de point dans la frise d'avancement (animation, enchaînement rapide)
+  respiration: true       # anecdote, histoire, aparté : titre, trait et point de la frise en sable, tasse, bulle « z z Z »
+  hauteur: true           # on prend de la hauteur (philosophie, recul) : titre, trait et point en prune, plume, montgolfière
   shrink: 15              # dépannage seulement : réduit le contenu d'au plus 15 %. Règle du projet : texte à taille
                           # unique, on coupe un transparent trop chargé en deux plutôt que de réduire
   only: [...] / except: [...]
@@ -358,7 +360,7 @@ Tout bloc accepte `step: N` (apparaît à partir de la couche N), `only:`, `exce
 ## Mini-markdown dans les textes
 
 `**gras**`, `*italique*`, `` `code` ``, `[texte](url)`, `« guillemets »`, `...` → points de suspension,
-`{{small:...}}`, `{{gris:...}}`, `{{bleugris:...}}`, `{{footnotesize:...}}`, `{{it:...}}` (imbricables).
+Les guillemets « … » (ou “…”) deviennent `\dire{…}` : texte en vert sombre (couleur `parole`), guillemets de la langue. Bases de règles en LaTeX (blocs `tex:`) : `\begin{regles}\regle{1}{\fait{a}\ret\fait{b}}{\effet{c}}\end{regles}`, pastilles `\fait`, `\effet`, `\non`, liaisons `\ret`, `\rou`, badge de règle automatique. `{{small:...}}`, `{{gris:...}}`, `{{bleugris:...}}`, `{{footnotesize:...}}`, `{{it:...}}` (imbricables).
 Un saut de ligne = retour à la ligne, une ligne vide = nouveau paragraphe.
 Les caractères `& % # _ $` sont échappés automatiquement ; `$x^2$` reste une formule.
 Pour du LaTeX brut, utiliser un bloc `tex:`.

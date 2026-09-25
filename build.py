@@ -64,7 +64,7 @@ WARNINGS = []   # [(ligne, message)] accumulés pendant le rendu
 def warn(msg, node=None):
     WARNINGS.append((line_of(node), msg))
 
-SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
+SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
               "image", "figure", "tikz", "args", "full", "height", "width", "source", "tex", "label"}
 # Types d'encadrés « alert » : (couleur du préambule, icône fontawesome5)
 ALERT_TYPES = {
@@ -188,10 +188,9 @@ def md(s, ctx=None, par=True):
     s = re.sub(r"\*\*(.+?)\*\*", r"\\gras{\1}", s)
     s = re.sub(r"(?<![\w\\])\*(?!\s)(.+?)(?<!\s)\*(?!\w)", r"\\emph{\1}", s)
     s = re.sub(r"`([^`]+)`", r"\\texttt{\1}", s)
-    if ctx and ctx.lang == "en":
-        s = re.sub(r"«\s*(.+?)\s*»", r"``\1''", s)
-    else:
-        s = re.sub(r"«\s*(.+?)\s*»", r"\\og \1\\fg{}", s)
+    # ce qui est entre guillemets est dit en langage naturel : couleur du monde (\dire, préambule)
+    s = re.sub(r"«\s*(.+?)\s*»", r"\\dire{\1}", s)
+    s = re.sub(r"“(.+?)”", r"\\dire{\1}", s)
     s = s.replace("…", r"\ldots{}").replace("...", r"\ldots{}")
     s = re.sub(r"\x00(\d+)\x00", lambda m: r"\href{%s}{%s}" % (links[int(m.group(1))][1].replace("%", r"\%").replace("#", r"\#"), esc(links[int(m.group(1))][0])), s)
     paras = [p.strip() for p in re.split(r"\n\s*\n", s)]
@@ -568,6 +567,10 @@ def _render_slide(s, ctx):
     lines.append("\\end{frame}")
     if s.get("frise") is False:     # pas de point dans la frise d'avancement (animation, enchaînement rapide)
         lines[0] = "\\sansfrise{" + lines[0]; lines[-1] += "}"
+    if s.get("respiration"):        # anecdote, histoire, aparté : titre, trait et point de la frise en sable
+        lines[0] = "\\respiration{" + lines[0]; lines[-1] += "}"
+    if s.get("hauteur"):            # on prend de la hauteur : titre, trait et point de la frise en prune, montgolfière
+        lines[0] = "\\hauteur{" + lines[0]; lines[-1] += "}"
     return "\n".join(lines)
 
 # ------------------------------------------------------------------ document
