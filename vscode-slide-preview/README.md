@@ -21,11 +21,16 @@ Beamer correspondant à la position du curseur dans un fichier YAML de `build.py
 
 ## Installation (sans marketplace, sans compilation)
 
+VS Code fermé, depuis ce dossier :
+
 ```bash
-ln -s "$PWD/vscode-slide-preview" ~/.vscode/extensions/laurent.slide-preview-0.1.0   # depuis la racine de deckgen
+python3 installer.py                 # lien dans ~/.vscode/extensions + inscription dans extensions.json
+python3 installer.py --desinstaller
 ```
 
-puis recharger VS Code (*Developer: Reload Window*). Pour désinstaller : supprimer le lien.
+puis relancer VS Code. Le lien pointe vers ce dossier : une modification du plugin est prise en compte
+au prochain *Developer: Reload Window*. Un simple lien ne suffit plus : sans inscription dans
+`extensions.json`, VS Code marque l'extension comme obsolète au démarrage et l'ignore.
 
 ## Fonctionnement
 
