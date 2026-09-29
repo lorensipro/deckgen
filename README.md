@@ -274,6 +274,7 @@ dans `deck.yaml` (`audiences:`).
   tags: [kr-horn, general-exercise]   # sujets du transparent, parmi ceux de tags.yaml du cours (refusés sinon) ; colonne de --export
   respiration: true       # anecdote, histoire, aparté : titre, trait et point de la frise en sable, tasse, bulle « z z Z »
   hauteur: true           # on prend de la hauteur (philosophie, recul) : titre, trait et point en prune, plume, montgolfière
+  tp: true                # « maintenant, TP » (consignes d'un TP) : titre, trait et point en sarcelle, ordinateur portable
   shrink: 15              # dépannage seulement : réduit le contenu d'au plus 15 %. Règle du projet : texte à taille
                           # unique, on coupe un transparent trop chargé en deux plutôt que de réduire
   only: [...] / except: [...]
@@ -356,8 +357,41 @@ LaTeX dans le fichier est rapportée avec sa ligne (`tex_line`).
 | espace | `- space: 8pt` |
 | source | `- source: "Wikipédia"` |
 | figure EMF manquante | `- placeholder: image95.emf` (+ `width`, `height`) |
+| frise des sujets | `- sujets: frise` (+ `ici: Logique`, `width`, `height`) : schéma du deck calculé à partir des tags, voir plus bas |
 
 Tout bloc accepte `step: N` (apparaît à partir de la couche N), `only:`, `except:` et `hide: true`.
+
+### Frise des sujets
+
+`- sujets: frise` dessine, à la compilation, une ligne par tag et un trait à chaque transparent visible du deck
+qui le porte (filtres `hide`, `only`, `except` appliqués) : les sections en bandes avec leur nom court, le nombre
+de transparents au bout de chaque ligne, une flèche de progression en bas. Les lignes sont rangées par première
+apparition ; chaque libellé est plus ou moins foncé selon le nombre de transparents du sujet dans la section qui
+commence (`ici:`), ou dans tout le deck sans `ici:` : les thèmes de la partie ressortent. Avec `ici:` (nom court ou nom d'une section, dans la langue du deck ou en français), la section est
+surlignée, un repère « on en est là » la marque sur la flèche et la suite est grisée : placée en tête de chaque
+section, la frise montre où l'on en est.
+
+```yaml
+- title: Où en est-on ?
+  frise: false
+  content:
+    - sujets: frise
+      ici: Logique
+```
+
+Deux champs facultatifs de `tags.yaml` règlent l'affichage :
+
+```yaml
+kr-natural-language: {nom: {fr: "langage naturel", en: "natural language"}, desc: "ambiguïté, implicature, ..."}
+general-wumpus:   {desc: "le monde du Wumpus, d'un deck à l'autre", sorte: fil}
+general-anecdote: {desc: "respiration, anecdote", sorte: forme}
+```
+
+`nom:` est le libellé de la ligne (`{fr:, en:}` ou texte en français) ; à défaut, le début de `desc` jusqu'à la
+première virgule, et en anglais le tag sans sa famille (`kr-natural-language` : « natural language »). `sorte: fil`
+marque un exemple qui revient d'un transparent à l'autre (en sable, sous un filet) ; `sorte: forme`, un tag qui dit
+comment le transparent est fait et non de quoi il parle (anecdote, exercice, démo) : il n'apparaît pas. Sans
+`sorte:`, un tag est un sujet (en bleu).
 
 ## Mini-markdown dans les textes
 

@@ -49,6 +49,15 @@
 % Hauteur (hauteur: true du YAML) : on prend de la hauteur, philosophie, recul ; titre et trait en prune, icône de plume,
 % point prune dans la frise, et une montgolfière qui décolle du trait.
 \newif\ifhauteur
+% TP (tp: true du YAML) : « maintenant, à vous » ; titre et trait en sarcelle, icône d'ordinateur, point sarcelle
+% dans la frise, et un petit portable posé sur le trait.
+\newif\iftp
+\newcommand{\portabletp}{\begin{tikzpicture}[x=1pt,y=1pt,baseline=0pt]
+  \fill[sarcelle] (-1.5,0) -- (20.5,0) -- (18.5,2.2) -- (0.5,2.2) -- cycle;                 % le clavier
+  \fill[sarcelle!85,rounded corners=1pt] (1.6,2.2) rectangle (17.4,13.5);                   % l'écran
+  \fill[white] (2.9,3.5) rectangle (16.1,12.2);
+  \fill[sarcelle] (7.6,5.3) -- (7.6,10.4) -- (12.2,7.85) -- cycle;                          % « lecture » : à vous de jouer
+\end{tikzpicture}}
 \newcommand{\montgolfiere}{\begin{tikzpicture}[x=1pt,y=1pt,baseline=0pt]
   \draw[prune!70,line width=0.4pt] (5.5,2) -- (5.5,7);           % l'amarre, encore attachée au trait
   \fill[prune] (3.6,1.6) rectangle (7.4,4.2);                     % la nacelle
@@ -74,6 +83,11 @@
   \let\deckgen@wseh\beamer@writeslidentry
   \def\beamer@writeslidentry{\addtocontents{nav}{\protect\headcommand{\protect\deckgenhaut{\the\c@section}{\the\c@subsectionslide}}}\deckgen@wseh}%
   #1\endgroup}
+\def\deckgentp#1#2{}
+\newcommand{\tp}[1]{\begingroup\tptrue
+  \let\deckgen@wset\beamer@writeslidentry
+  \def\beamer@writeslidentry{\addtocontents{nav}{\protect\headcommand{\protect\deckgentp{\the\c@section}{\the\c@subsectionslide}}}\deckgen@wset}%
+  #1\endgroup}
 \makeatother
 \setbeamersize{mini frame size=.08cm,mini frame offset=.025cm}
 \makeatletter
@@ -84,17 +98,18 @@
 \def\deckgendots{\begingroup\tiny
   \def\subsectionentry##1##2##3##4##5{}%
   % passe 1 : noms des autres sections, et le point « en cours » = dernier transparent compté ne dépassant pas celui-ci
-  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax\def\deckgen@respis{,}\def\deckgen@hauts{,}%
+  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax\def\deckgen@respis{,}\def\deckgen@hauts{,}\def\deckgen@tps{,}%
   \def\deckgenrespi##1##2{\edef\deckgen@respis{\deckgen@respis##1-##2,}}%
   \def\deckgenhaut##1##2{\edef\deckgen@hauts{\deckgen@hauts##1-##2,}}%
+  \def\deckgentp##1##2{\edef\deckgen@tps{\deckgen@tps##1-##2,}}%
   \def\sectionentry##1##2##3##4##5{\ifnum##1<\c@section\relax\deckgen@avant=\expandafter{\the\deckgen@avant{\color{gris}##2}\hskip8pt plus1fil}\fi
     \ifnum##1>\c@section\relax\deckgen@apres=\expandafter{\the\deckgen@apres\hskip8pt plus1fil{\color{gris}##2}}\fi}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax\ifnum##3>\c@subsectionslide\else\deckgen@courant=##3\relax\fi\fi}%
   \dohead
   % passe 2 : les points
-  \def\sectionentry##1##2##3##4##5{}\def\deckgenrespi##1##2{}\def\deckgenhaut##1##2{}%
+  \def\sectionentry##1##2##3##4##5{}\def\deckgenrespi##1##2{}\def\deckgenhaut##1##2{}\def\deckgentp##1##2{}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax
-    \IfSubStr{\deckgen@respis}{,##1-##3,}{\colorlet{deckgen@pt}{sable}}{\IfSubStr{\deckgen@hauts}{,##1-##3,}{\colorlet{deckgen@pt}{prune}}{\colorlet{deckgen@pt}{teinte}}}%
+    \IfSubStr{\deckgen@respis}{,##1-##3,}{\colorlet{deckgen@pt}{sable}}{\IfSubStr{\deckgen@hauts}{,##1-##3,}{\colorlet{deckgen@pt}{prune}}{\IfSubStr{\deckgen@tps}{,##1-##3,}{\colorlet{deckgen@pt}{sarcelle}}{\colorlet{deckgen@pt}{teinte}}}}%
     \ifnum\deckgen@courant=##3\relax{\color{deckgen@pt}\usebeamertemplate{mini frame}}%
     \else{\color{deckgen@pt!60}\usebeamertemplate{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
   \setbox\deckgen@dotsbox=\hbox{\dohead\unskip}%
@@ -122,12 +137,13 @@
     \vspace*{5pt}%
   \fi
   \begin{beamercolorbox}[wd=\paperwidth,leftskip=0.04\paperwidth,rightskip=0.04\paperwidth,sep=0pt]{frametitle}%
-    \usebeamerfont{frametitle}\ifrespiration{\color{sable}\faCoffee\enspace}\fi\ifhauteur{\color{prune}\faFeather\enspace}\fi\insertframetitle\strut
+    \usebeamerfont{frametitle}\ifrespiration{\color{sable}\faCoffee\enspace}\fi\ifhauteur{\color{prune}\faFeather\enspace}\fi\iftp{\color{sarcelle}\faLaptopCode\enspace}\fi\insertframetitle\strut
   \end{beamercolorbox}%
   \vspace*{3pt}%
-  \hspace*{0.04\paperwidth}{\color{\ifrespiration sable\else\ifhauteur prune\else teinte\fi\fi}\rule{0.92\paperwidth}{1.1pt}}%
+  \hspace*{0.04\paperwidth}{\color{\ifrespiration sable\else\ifhauteur prune\else\iftp sarcelle\else teinte\fi\fi\fi}\rule{0.92\paperwidth}{1.1pt}}%
   \ifrespiration\llap{\smash{\raisebox{1pt}{\bullezzz}}\hspace{0.12\paperwidth}}\fi%
   \ifhauteur\llap{\smash{\raisebox{1pt}{\montgolfiere}}\hspace{0.12\paperwidth}}\fi%
+  \iftp\llap{\smash{\raisebox{1.1pt}{\portabletp}}\hspace{0.12\paperwidth}}\fi%
   \vspace*{4pt}%
 }
 \setbeamerfont{title}{size=\Huge,series=\bfseries}

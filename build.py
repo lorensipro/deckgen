@@ -21,6 +21,7 @@ import yaml
 
 ENGINE = os.path.dirname(os.path.abspath(__file__))   # le générateur : build.py, preamble.tex, templates/, scripts/slidefig.py
 PROJECT = os.getcwd()                                  # le cours : dossier du deck, fixé dans main()
+DECK = {}                                              # le deck.yaml chargé, fixé dans main() (bloc sujets:)
 
 def find_file(rel):
     """Fichier du cours s'il existe, sinon celui fourni avec le générateur."""
@@ -64,7 +65,7 @@ WARNINGS = []   # [(ligne, message)] accumulés pendant le rendu
 def warn(msg, node=None):
     WARNINGS.append((line_of(node), msg))
 
-SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
+SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tp", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
               "image", "figure", "tikz", "args", "full", "height", "width", "source", "tex", "label"}
 # Types d'encadrés « alert » : (couleur du préambule, icône fontawesome5)
 ALERT_TYPES = {
@@ -89,11 +90,11 @@ BLOCK_TYPES = {
     "monde": "monde", "formel": "formel",       # les deux mondes du cours : réel / naturel vs calculé / formel
 }
 BLOCK_MAIN = {"text", "bullets", "numbered", "image", "figure", "tikz", "images", "alert", "block", "quote", "stats",
-              "columns", "tex", "space", "placeholder"}   # + "source" seul = bloc source
+              "columns", "tex", "space", "placeholder", "sujets"}   # + "source" seul = bloc source
 # Options propres aux encadrés : ailleurs elles sont ignorées, souvent parce qu'un alert a été supprimé sans elles
 ENCADRE_OPTS = {"type": {"alert", "block"}, "bold": {"alert"}, "icon": {"alert"}}
 BLOCK_OPTS = {"layout", "step", "type", "icon", "only", "except", "hide", "meta", "hidden", "width", "height", "source", "align", "size", "style",
-              "title", "bold", "gap", "valign", "reveal", "args", "deps", "format"}
+              "title", "bold", "gap", "valign", "reveal", "args", "deps", "format", "ici"}
 # Dispositions de colonnes nommées (- layout: texte-image puis columns: [...]) : largeurs en fraction de \\textwidth.
 LAYOUTS = {"egal": [0.48, 0.48], "texte-image": [0.6, 0.36], "image-texte": [0.36, 0.6]}
 REGEN = False   # --regen : forcer la régénération des figures produites par script
@@ -333,6 +334,12 @@ def render_block(b, ctx, indent):
         if b.get("align", "center") == "center":
             return f"{i}\\begin{{center}}\n{i}{inner}{src}\n{i}\\end{{center}}"
         return f"{i}{inner}{src}"
+    if "sujets" in b:  # frise des sujets du deck, calculée à partir des tags des transparents
+        inner = frise_sujets(b, ctx)
+        w = frac(b.get("width"), chr(92) + "linewidth"); h = frac(b.get("height"), chr(92) + "textheight")
+        if w or h:
+            inner = f"\\resizebox{{{w or '!'}}}{{{h or '!'}}}{{{inner}}}"
+        return f"{i}\\begin{{center}}\n{inner}\n{i}\\end{{center}}"
     if "image" in b:
         opts = []
         if b.get("width") is not None:  opts.append(f"width={frac(b['width'], chr(92)+'linewidth')}")
@@ -510,13 +517,17 @@ def bibliography_frames(ctx, per_frame=4):
     return frames
 
 _TAGS = None
-def tags_connus():
-    """Les tags autorisés (tags.yaml du cours) ; None si le cours n'en définit pas."""
+def tags_meta():
+    """Le vocabulaire des tags (tags.yaml du cours) : {tag: {desc:, nom:, sorte:, aima:}} ; {} s'il n'existe pas."""
     global _TAGS
     if _TAGS is None:
         p = os.path.join(PROJECT, "tags.yaml")
-        _TAGS = set(load_yaml(p).keys()) if os.path.exists(p) else set()
-    return _TAGS or None
+        _TAGS = (load_yaml(p) or {}) if os.path.exists(p) else {}
+    return _TAGS
+
+def tags_connus():
+    """Les tags autorisés (tags.yaml du cours) ; None si le cours n'en définit pas."""
+    return set(tags_meta()) or None
 
 def verifier_tags(s):
     t = s.get("tags")
@@ -528,6 +539,112 @@ def verifier_tags(s):
         inconnus = [x for x in t if x not in connus]
         if inconnus:
             raise SlideError(f"tag(s) inconnu(s) {inconnus} : voir tags.yaml", s)
+
+# ------------------------------------------------------------------ frise des sujets (bloc sujets:)
+
+def tag_nom(t, ctx):
+    """Nom court d'un tag : nom: de tags.yaml ({fr:, en:} ou texte en français) ; à défaut, en français le début
+    de desc (jusqu'à la première virgule), en anglais le tag sans sa famille (kr-natural-language -> natural language)."""
+    m = tags_meta().get(t) or {}
+    nom, slug = m.get("nom"), t.split("-", 1)[-1].replace("-", " ")
+    if isinstance(nom, dict) and ctx.lang in nom:
+        return nom[ctx.lang]
+    if ctx.lang != "fr":
+        return slug
+    return L(nom, ctx) if nom else (re.split(r"[,:;]", m.get("desc") or "")[0].strip() or slug)
+
+def plan_du_deck(ctx):
+    """Les transparents visibles du deck, dans l'ordre : sections [(nom court, {ses noms dans la langue et en
+    français}, indice du premier transparent)] et, pour chaque transparent hors pages de section, la liste de ses tags."""
+    slides_dir = os.path.join(PROJECT, DECK.get("slides_dir", "slides"))
+    sections, pos, fr = [], [], Ctx("fr", ctx.audience, ctx.audiences)
+    for p in DECK.get("parts", []):
+        for s in load_yaml(os.path.join(slides_dir, p if p.endswith(".yaml") else p + ".yaml")):
+            if not isinstance(s, dict) or not visible(s, ctx):
+                continue
+            if "section" in s:
+                court = s.get("court") or s.get("short") or s["section"]
+                sections.append((L(court, ctx), {L(court, ctx), L(s["section"], ctx), L(court, fr), L(s["section"], fr)}, len(pos)))
+            else:
+                pos.append([t for t in (s.get("tags") or []) if isinstance(t, str)])
+    return sections, pos
+
+def frise_sujets(b, ctx):
+    """Bloc sujets: frise -> tikzpicture : une ligne par tag, un trait par transparent qui le porte, les sections en
+    bandes, un histogramme au bout de chaque ligne, la ligne de progression en bas. Sujets en bleu (tags sans sorte:),
+    fils rouges en sable (sorte: fil) ; les tags sorte: forme ne sont pas montrés. ici: section courante
+    (nom court ou nom, dans la langue du deck ou en français) : bande et repère « on en est là », la suite grisée."""
+    if b["sujets"] != "frise":
+        raise SlideError(f"sujets: {b['sujets']} inconnu (styles : frise)", b)
+    sections, pos = plan_du_deck(ctx)
+    N = len(pos)
+    if not N:
+        raise SlideError("sujets: aucun transparent dans le deck", b)
+    k_ici = None
+    if b.get("ici") is not None:
+        ici = L(b["ici"], ctx)
+        k_ici = next((k for k, (_, noms, _) in enumerate(sections) if ici in noms), None)
+        if k_ici is None:
+            raise SlideError(f"ici: « {ici} » n'est pas une section du deck ({', '.join(c for c, _, _ in sections)})", b)
+    bornes = [a for _, _, a in sections] + [N]
+    fin_ici = bornes[k_ici + 1] if k_ici is not None else N
+    occ = {}
+    for i, ts in enumerate(pos):
+        for t in ts:
+            occ.setdefault(t, []).append(i)
+    sorte = lambda t: (tags_meta().get(t) or {}).get("sorte")
+    sujets = sorted((t for t in occ if not sorte(t)), key=lambda t: occ[t][0])
+    fils = sorted((t for t in occ if sorte(t) == "fil"), key=lambda t: occ[t][0])
+    lignes = sujets + (["--"] + fils if fils and sujets else fils)
+    nl = len(sujets) + len(fils)
+    dy = min(0.27, 5.2 / max(nl, 1))                      # tout tient en hauteur, quitte à serrer les lignes
+    police = r"\tiny"
+    x0, x1 = 3.0, 11.4
+    dx, H = (x1 - x0) / N, dy * (len(lignes) - (0.5 if "--" in lignes else 0))
+    nmax = max(len(v) for v in occ.values()) if occ else 1
+    # intensité d'un sujet dans la section qui commence (ici:), sinon dans tout le deck : libellé du pâle (absent) au foncé
+    a_ici, b_ici = (bornes[k_ici], bornes[k_ici + 1]) if k_ici is not None else (0, N)
+    dans = {t: sum(1 for i in v if a_ici <= i < b_ici) for t, v in occ.items()}
+    dmax = max(dans.values(), default=0) or 1
+    teinte_nom = lambda t, base: f"{base}!{round(22 + 78 * (dans[t] / dmax) ** .7)}!white"
+    tx = lambda s: "".join(_ESC.get(c, c) for c in str(s))
+    o = [r"\begin{tikzpicture}[x=1cm,y=1cm]"]
+    for k, (c, _, a) in enumerate(sections):                 # les sections en bandes, leur nom court au-dessus
+        fond = "teinte!24" if k == k_ici else ("brume" if k % 2 == 0 else "white")
+        o.append(f"  \\fill[{fond}] ({x0 + a*dx:.3f},{dy*0.6:.3f}) rectangle ({x0 + bornes[k+1]*dx:.3f},{-H + dy*0.4:.3f});")
+        o.append(f"  \\node[font=\\scriptsize\\bfseries,color={'teinte' if k == k_ici else 'bleugris'},anchor=base] "
+                 f"at ({x0 + (a + bornes[k+1])/2*dx:.3f},{dy*0.6 + 0.1:.3f}) {{{tx(c)}}};")
+    y = 0
+    for t in lignes:
+        if t == "--":                                     # filet entre sujets et fils rouges
+            o.append(f"  \\draw[gris!40] (0.2,{y + dy/2:.3f}) -- ({x1 + 1.4:.3f},{y + dy/2:.3f});")
+            y -= dy * 0.5
+            continue
+        fil = sorte(t) == "fil"
+        col = "sable!85!black" if fil else "formel"
+        o.append(f"  \\node[font={police},color={teinte_nom(t, 'sable!70!black' if fil else 'encre')},anchor=east] at ({x0 - 0.1:.3f},{y:.3f}) {{{tx(tag_nom(t, ctx))}}};")
+        for i in occ[t]:
+            o.append(f"  \\fill[{col if i < fin_ici else 'gris!35'}] ({x0 + i*dx:.3f},{y - 0.3*dy:.3f}) rectangle ({x0 + (i + 0.8)*dx:.3f},{y + 0.3*dy:.3f});")
+        n = len(occ[t]); lg = 1.1 * n / nmax
+        o.append(f"  \\fill[{col}!45] ({x1 + 0.15:.3f},{y - 0.22*dy:.3f}) rectangle ({x1 + 0.15 + lg:.3f},{y + 0.22*dy:.3f});")
+        o.append(f"  \\node[font=\\tiny,color=gris,anchor=west] at ({x1 + 0.17 + lg:.3f},{y:.3f}) {{{n}}};")
+        y -= dy
+    ya = y + dy * 0.1                                     # la ligne de progression, graduée
+    o.append(f"  \\draw[-{{Latex[length=2.2mm]}},gris,line width=0.8pt] ({x0:.3f},{ya:.3f}) -- ({x1 + 0.35:.3f},{ya:.3f});")
+    pas = 10 if N <= 250 else 25
+    for i in range(0, N, pas):
+        o.append(f"  \\draw[gris!70] ({x0 + i*dx:.3f},{ya:.3f}) -- ({x0 + i*dx:.3f},{ya - 0.06:.3f});")
+    xi = x0 + bornes[k_ici] * dx if k_ici is not None else x0
+    gauche = xi > x1 - 3.2                                # le repère est à droite : la légende de la flèche passe à gauche
+    o.append(f"  \\node[font=\\scriptsize,color=gris,anchor=north {'west' if gauche else 'east'}] "
+             f"at ({x0 if gauche else x1 + 0.35:.3f},{ya - 0.08:.3f}) "
+             f"{{{'au fil des transparents' if ctx.lang == 'fr' else 'through the slides'}}};")
+    if k_ici is not None:                                 # le repère « on en est là »
+        o.append(f"  \\fill[teinte] ({xi:.3f},{ya + 0.03:.3f}) -- ({xi - 0.1:.3f},{ya - 0.16:.3f}) -- ({xi + 0.1:.3f},{ya - 0.16:.3f}) -- cycle;")
+        o.append(f"  \\node[font=\\scriptsize\\bfseries,color=teinte,anchor=north] at ({xi:.3f},{ya - 0.16:.3f}) "
+                 f"{{{'on en est là' if ctx.lang == 'fr' else 'we are here'}}};")
+    o.append(r"\end{tikzpicture}")
+    return "\n".join(o)
 
 def render_slide(s, ctx):
     r = _render_slide(s, ctx)
@@ -598,6 +715,8 @@ def _render_slide(s, ctx):
         lines[0] = "\\respiration{" + lines[0]; lines[-1] += "}"
     if s.get("hauteur"):            # on prend de la hauteur : titre, trait et point de la frise en prune, montgolfière
         lines[0] = "\\hauteur{" + lines[0]; lines[-1] += "}"
+    if s.get("tp"):                 # maintenant TP : titre, trait et point de la frise en sarcelle, portable
+        lines[0] = "\\tp{" + lines[0]; lines[-1] += "}"
     return "\n".join(lines)
 
 # ------------------------------------------------------------------ document
@@ -1055,6 +1174,7 @@ def main():
     PROJECT = os.path.dirname(deck_path)
     with open(deck_path, encoding="utf8") as f:
         deck = yaml.safe_load(f)
+    global DECK; DECK = deck
     lang = a.lang or deck.get("lang", "fr")
     audience = a.audience or deck.get("audience")
     if audience and audience not in deck.get("audiences", [audience]):
