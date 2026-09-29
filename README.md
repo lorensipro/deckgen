@@ -83,7 +83,7 @@ Les figures et `references.yaml` sont partagés.
 
 | Fichier | Rôle |
 |---|---|
-| `deck.yaml` | métadonnées (titre, auteur, date, `fontsize:` 10pt par défaut, 11pt ou 12pt pour un deck aéré ; `pied:` pied de page en petit gris près du bord : `{auteur:, filiere:, ecole:, date:}` (au milieu, une icône par rubrique ; le titre du deck à gauche ; une simple chaîne va au milieu), suivi à droite de `licence:` (aussi sur la page de titre) et d'un identifiant de version `vAAAA.MM.JJ-empreinte` calculé sur le contenu ; ces trois éléments vont aussi dans les métadonnées du PDF (titre, auteur, sujet, mots-clés), traceur discret des copies ; `teinte:` couleur du deck pour le trait des titres et la frise (`formel`, `sarcelle`, `prune`... une par UE) ; `navigation: true` pour la frise d'avancement en haut des transparents : un point par transparent de la section courante, puis son nom court entre parenthèses), langues, audiences, ordre des parties (`parts:`), `slides_dir:`, `preamble:` |
+| `deck.yaml` | métadonnées (titre, auteur : texte libre ou `{nom:, site: (ou mail:), lignes: [enseirb, google, chaire]}` dont les lignes d'affiliation et les bandeaux de logos sont définis dans `auteur.yaml` du cours, date, `fontsize:` 10pt par défaut, 11pt ou 12pt pour un deck aéré ; `motif:` dessin en filigrane de la page de titre, dans la teinte du deck (`graphe` par défaut, `caverne`, `coupure`, `et-ou`, `mondes`, `regle`, `bdd`, `agent`) ; `pied:` pied de page en petit gris près du bord : `{auteur:, filiere:, ecole:, date:}` (au milieu, une icône par rubrique ; le titre du deck à gauche ; une simple chaîne va au milieu), suivi à droite de `licence:` (« CC BY-NC 4.0 », « CC BY-SA 4.0 »... : le badge officiel Creative Commons correspondant est affiché, images du paquet doclicense) (aussi sur la page de titre) et d'un identifiant de version `vAAAA.MM.JJ-empreinte` calculé sur le contenu ; ces trois éléments vont aussi dans les métadonnées du PDF (titre, auteur, sujet, mots-clés), traceur discret des copies ; `teinte:` couleur du deck pour le trait des titres et la frise (`formel`, `sarcelle`, `prune`... une par UE) ; `navigation: true` pour la frise d'avancement en haut des transparents : un point par transparent de la section courante, puis son nom court entre parenthèses), langues, audiences, ordre des parties (`parts:`), `slides_dir:`, `preamble:` |
 | `slides/*.yaml` | une partie par fichier, liste de transparents |
 | `figures/` | images (PDF vectoriel quand c'est possible) ; `figures/tikz/` les schémas TikZ ; `figures/gen/` les figures produites par script |
 | `scripts/` | scripts de figures |
@@ -211,7 +211,7 @@ ouvrage, `edition` ou `ou`, `annee`, `url`, `court` pour la forme courte, `verif
   cite: [{pearl1988: "§3.3"}, verma-pearl-1988]     # -> ligne grise en bas : « Pearl 1988, §3.3 · Verma & Pearl 1988 »
 ```
 
-Une clé inconnue arrête la génération avec le fichier et la ligne. `bibliographie: true` dans le deck ajoute en fin de
+Une clé inconnue arrête la génération avec le fichier et la ligne. Une option d'encadré (`type`, `bold`, `icon`) posée sur un autre bloc, souvent le reste d'un `alert` supprimé, donne un avertissement. `bibliographie: true` dans le deck ajoute en fin de
 cours les transparents « Références » (entrées citées seulement, triées par auteur, cinq par page).
 `deck --deck deck-bayes.yaml --refs` liste les clés citées et celles de `references.yaml` jamais citées.
 Le bloc `source:` reste réservé aux images et aux données (« Source : … » sous le bloc).
@@ -228,7 +228,8 @@ tirer au sort un sujet. Deux emplacements, pour ne pas encombrer les slides :
     questions:
       - {ouverte: "Pourquoi Java ne suffit-il pas à décrire le monde ?", attendu: "...", niveau: 2}
 
-# 2. dans un fichier à côté, slides/rc/03-systemes-experts.questions.yaml, dès qu'il y en a plus
+# 2. dans un fichier par deck, slides/rc/questions.yaml (ou deck: questions: chemin), dès qu'il y en a plus ;
+#    un fichier par partie, slides/rc/03-xxx.questions.yaml, reste possible
 - slide: horn                    # le label: du transparent (stable), ou son titre français exact
   questions:
     - qcm: "Pourquoi se restreindre aux formules de Horn ?"
@@ -270,6 +271,7 @@ dans `deck.yaml` (`audiences:`).
   notes: ...              # notes du présentateur
   background: black       # couleur de fond de la page (optionnel)
   frise: false            # pas de point dans la frise d'avancement (animation, enchaînement rapide)
+  tags: [kr-horn, general-exercise]   # sujets du transparent, parmi ceux de tags.yaml du cours (refusés sinon) ; colonne de --export
   respiration: true       # anecdote, histoire, aparté : titre, trait et point de la frise en sable, tasse, bulle « z z Z »
   hauteur: true           # on prend de la hauteur (philosophie, recul) : titre, trait et point en prune, plume, montgolfière
   shrink: 15              # dépannage seulement : réduit le contenu d'au plus 15 %. Règle du projet : texte à taille

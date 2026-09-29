@@ -64,7 +64,7 @@ WARNINGS = []   # [(ligne, message)] accumulés pendant le rendu
 def warn(msg, node=None):
     WARNINGS.append((line_of(node), msg))
 
-SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
+SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
               "image", "figure", "tikz", "args", "full", "height", "width", "source", "tex", "label"}
 # Types d'encadrés « alert » : (couleur du préambule, icône fontawesome5)
 ALERT_TYPES = {
@@ -90,6 +90,8 @@ BLOCK_TYPES = {
 }
 BLOCK_MAIN = {"text", "bullets", "numbered", "image", "figure", "tikz", "images", "alert", "block", "quote", "stats",
               "columns", "tex", "space", "placeholder"}   # + "source" seul = bloc source
+# Options propres aux encadrés : ailleurs elles sont ignorées, souvent parce qu'un alert a été supprimé sans elles
+ENCADRE_OPTS = {"type": {"alert", "block"}, "bold": {"alert"}, "icon": {"alert"}}
 BLOCK_OPTS = {"layout", "step", "type", "icon", "only", "except", "hide", "meta", "hidden", "width", "height", "source", "align", "size", "style",
               "title", "bold", "gap", "valign", "reveal", "args", "deps", "format"}
 # Dispositions de colonnes nommées (- layout: texte-image puis columns: [...]) : largeurs en fraction de \\textwidth.
@@ -294,6 +296,10 @@ def render_block(b, ctx, indent):
     extra = set(b) - BLOCK_MAIN - BLOCK_OPTS
     if extra:
         warn(f"option(s) inconnue(s) {sorted(extra)} dans le bloc '{mains[0]}' (ignorées)", b)
+    for opt, owners in ENCADRE_OPTS.items():   # reste d'un encadré supprimé : ses options passent au bloc suivant
+        if opt in b and mains[0] not in owners:
+            warn(f"option « {opt} » sur un bloc '{mains[0]}' : elle ne vaut que pour {' / '.join(sorted(owners))} "
+                 "(reste d'un encadré supprimé ?)", b)
     if "text" in b:
         pre = "".join(_FONTS.get(k, "") for k in (b.get("style") or "").split())
         if pre:
@@ -503,6 +509,26 @@ def bibliography_frames(ctx, per_frame=4):
         frames.append(f"\\begin{{frame}}{{{titre}}}\n  \\relax\n  \\begin{{itemize}}\n{items}\n  \\end{{itemize}}\n\\end{{frame}}")
     return frames
 
+_TAGS = None
+def tags_connus():
+    """Les tags autorisés (tags.yaml du cours) ; None si le cours n'en définit pas."""
+    global _TAGS
+    if _TAGS is None:
+        p = os.path.join(PROJECT, "tags.yaml")
+        _TAGS = set(load_yaml(p).keys()) if os.path.exists(p) else set()
+    return _TAGS or None
+
+def verifier_tags(s):
+    t = s.get("tags")
+    if t is None: return
+    if not isinstance(t, list) or not all(isinstance(x, str) for x in t):
+        raise SlideError("tags: doit être une liste de mots", s)
+    connus = tags_connus()
+    if connus is not None:
+        inconnus = [x for x in t if x not in connus]
+        if inconnus:
+            raise SlideError(f"tag(s) inconnu(s) {inconnus} : voir tags.yaml", s)
+
 def render_slide(s, ctx):
     r = _render_slide(s, ctx)
     if r is not None and isinstance(s, dict) and s.get("background"):   # background: black -> fond de page
@@ -526,6 +552,7 @@ def _render_slide(s, ctx):
         raise SlideError("transparent vide : il faut title, content, section, image ou tex", s)
     if "content" in s and not isinstance(s["content"], list):
         raise SlideError("'content' doit être une liste de blocs (commençant par '- ')", s)
+    verifier_tags(s)
     if not visible(s, ctx):
         return None
     if "section" in s:
@@ -599,26 +626,67 @@ def document(deck, ctx, body, titlepage=True):
                                                 ico(r"\faUniversity", pied.get("ecole")), ico(r"\faCalendar", pied.get("date"))) if x)
     else:                           # une seule chaîne : au milieu
         pied_gauche, pied_milieu = "", md(pied, ctx, par=False)
-    pied_droite = "\\quad".join(x for x in (ico(r"\faCreativeCommons", licence), ico(r"\faTag", version)) if x)
+    # badge officiel Creative Commons (images vectorielles du paquet doclicense de TeX Live)
+    mcc = re.match(r"\s*CC[ -]+(BY(?:-NC)?(?:-SA|-ND)?)", str(L(meta.get("licence", ""), ctx) or ""), re.I)
+    cc = mcc.group(1).lower() if mcc else None
+    badge = (lambda h, f: f"\\includegraphics[height={h}]{{doclicense-CC-{cc}-{f}}}") if cc else None
+    pied_licence = (f"\\raisebox{{-1pt}}{{{badge('5.5pt', '80x15')}}}" if cc else ico(r"\faCreativeCommons", licence)) if licence else ""
+    pied_droite = "\\quad".join(x for x in (pied_licence, ico(r"\faTag", version)) if x)
     pied_complet = pied_gauche or pied_milieu or pied_droite
     plain = lambda v: re.sub(r"\[(.*?)\]\(.*?\)", r"\1", str(L(v, ctx) or "").split("\n")[0]).replace("{{small:", "").replace("}}", "").strip()
     pdfmeta = ("\\hypersetup{" + ",".join(f"{k}={{{v}}}" for k, v in [
-        ("pdftitle", plain(meta.get("title", ""))), ("pdfauthor", plain(meta.get("author", ""))),
+        ("pdftitle", plain(meta.get("title", ""))), ("pdfauthor", plain(meta["author"].get("nom", "") if isinstance(meta.get("author"), dict) else meta.get("author", ""))),
         ("pdfsubject", plain(meta.get("date", ""))),
         ("pdfkeywords", ", ".join(x for x in (licence, version, ctx.lang, ctx.audience or "") if x))] if v) + "}") if body else ""
     date = md(meta.get("date", ""), ctx, par=False) + (f"\\\\[2pt]{{\\small\\color{{gris}}{licence}}}" if licence else "")
+    MOTIFS = {"graphe": "motifgraphe", "caverne": "motifcaverne", "coupure": "motifcoupure", "et-ou": "motifetou",
+              "mondes": "motifmondes", "regle": "motifregle", "bdd": "motifbdd", "agent": "motifagent"}
+    if meta.get("motif", "graphe") not in MOTIFS:
+        sys.exit(f"motif: inconnu « {meta.get('motif')} » (connus : {', '.join(MOTIFS)})")
+    motif = MOTIFS[meta.get("motif", "graphe")]
+    # page de titre : auteur structuré {nom, mail, lignes: [ids de auteur.yaml]} ou texte libre (ancien format)
+    au = meta.get("author", "")
+    t_nom = t_mail = t_lignes = t_logos = ""
+    if isinstance(au, dict) and ("nom" in au or "lignes" in au):
+        t_nom = md(au.get("nom", ""), ctx, par=False)
+        site = str(au.get("site", "")).strip()      # le site web remplace le mail quand il est donné
+        if site:
+            url = site if site.startswith("http") else "https://" + site
+            t_mail = "\\href{" + url + "}{" + site.replace("_", "\\_").replace("~", "\\textasciitilde{}") + "}"
+        else:
+            t_mail = str(au.get("mail", "")).replace("_", "\\_")
+        ap = os.path.join(PROJECT, "auteur.yaml")
+        defs = load_yaml(ap) if os.path.exists(ap) else {}
+        rows, logos = [], []
+        for k in au.get("lignes") or []:
+            if k not in defs:
+                sys.exit(f"author: lignes: « {k} » inconnue (connues dans auteur.yaml : {', '.join(defs)})")
+            d = defs[k]
+            rows.append(f"{{\\color{{gris}}{md(d.get('role', ''), ctx, par=False)}}} & {{\\color{{bleugris}}@}}\\ {md(d.get('lieu', ''), ctx, par=False)}\\\\")
+            if d.get("logos"): logos.append(L(d["logos"], ctx))
+        t_lignes = "".join(rows)
+        t_logos = "\\\\[4pt]".join(f"\\includegraphics[width=0.9\\paperwidth]{{{x}}}" for x in logos)
+        au_pdf = au.get("nom", "")
+    else:
+        t_nom = md(au, ctx, par=False)
+        au_pdf = au
+    titre_defs = ("\\renewcommand{\\titrenom}{" + (("{\\normalfont\\small\\color{encre}" + t_nom + "}") if not isinstance(au, dict) else t_nom) + "}"
+                  f"\\renewcommand{{\\titremail}}{{{t_mail}}}\\renewcommand{{\\titrelignes}}{{{t_lignes}}}"
+                  f"\\renewcommand{{\\titrecontexte}}{{{md(meta.get('date', ''), ctx, par=False)}}}"
+                  f"\\renewcommand{{\\titrelicence}}{{{licence}}}\\renewcommand{{\\titrelogos}}{{{t_logos}}}"
+                  + (f"\\renewcommand{{\\titrebadge}}{{{badge('13pt', '88x31')}}}" if cc else ""))
     return "\n".join([
         f"% Fichier généré par build.py (lang={ctx.lang}, audience={ctx.audience}, {version}) -- ne pas éditer",
         f"\\documentclass[aspectratio=169,{meta.get('fontsize', '10pt')}]{{beamer}}", lang_macros, pre,
         f"\\title{{{md(meta.get('title',''), ctx, par=False)}}}",
         f"\\subtitle{{{md(meta.get('subtitle',''), ctx, par=False)}}}",
-        f"\\author{{{md(meta.get('author',''), ctx, par=False)}}}",
+        f"\\author{{{t_nom if isinstance(au, dict) else md(au, ctx, par=False)}}}",
         f"\\date{{{date}}}", pdfmeta,   # métadonnées PDF : avant \begin{document}, hyperref les écrit à ce moment-là
         "\\begin{document}", f"\\def\\audience{{{ctx.audience or ''}}}",
         "\\navigationtrue" if meta.get("navigation") else "",
         f"\\colorlet{{teinte}}{{{meta['teinte']}}}" if meta.get("teinte") else "",
         (f"\\renewcommand{{\\piedgauche}}{{{pied_gauche}}}\\renewcommand{{\\piedmilieu}}{{{pied_milieu}}}"
-         f"\\renewcommand{{\\pieddroite}}{{{pied_droite}}}") if pied_complet else "", "\\maketitle" if titlepage else "",
+         f"\\renewcommand{{\\pieddroite}}{{{pied_droite}}}") if pied_complet else "", (titre_defs + "\n\\sbox{\\motifbox}{\\scalebox{0.85}{\\" + motif + "}}\n\\pagetitre") if titlepage else "",
         *body, "\\end{document}", ""])
 
 def run_pdflatex(tex_path, out_dir, passes=2, fmt=None):
@@ -711,7 +779,7 @@ def export_meta(deck, ctx, target):
             rows.append({"n": n, "file": os.path.relpath(path, PROJECT), "line": line_of(s), "index": i + 1,
                          "kind": "section" if "section" in s else "slide",
                          "title": L(title, ctx) if not isinstance(title, dict) or is_lang_dict(title) else str(title),
-                         "filters": filters, "meta": slide_meta(s)})
+                         "filters": filters, "tags": s.get("tags") or [], "meta": slide_meta(s)})
     ext = os.path.splitext(target)[1].lower() if target != "-" else ".md"
     if ext == ".json":
         out = json.dumps(rows, ensure_ascii=False, indent=2)
@@ -719,10 +787,10 @@ def export_meta(deck, ctx, target):
         out = yaml.safe_dump(rows, allow_unicode=True, sort_keys=False)
     else:
         keys = sorted({k for r in rows for k in r["meta"]})
-        head = ["n", "titre", "filtres"] + keys
+        head = ["n", "titre", "filtres", "tags"] + keys
         lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
         for r in rows:
-            cells = [str(r["n"]), ("**" + r["title"] + "**") if r["kind"] == "section" else r["title"], " ".join(r["filters"])]
+            cells = [str(r["n"]), ("**" + r["title"] + "**") if r["kind"] == "section" else r["title"], " ".join(r["filters"]), " ".join(r["tags"])]
             cells += [(", ".join(map(str, v)) if isinstance(v, list) else str(v)).replace("\n", " ")
                       for v in (r["meta"].get(k, "") for k in keys)]
             lines.append("| " + " | ".join(c.replace("|", "\\|") for c in cells) + " |")

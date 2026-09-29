@@ -3,7 +3,8 @@
 
 Les questions vivent à deux endroits, au choix :
   1. dans le transparent :      meta: {questions: [ ... ]}            (une ou deux questions courtes)
-  2. dans un fichier à côté :   slides/rc/01-xxx.questions.yaml       (dès qu'il y en a plus)
+  2. dans un fichier par deck :  slides/rc/questions.yaml               (ou deck: questions: chemin) ;
+     ou par partie :             slides/rc/01-xxx.questions.yaml
          - slide: sapir-whorf        # le label: du transparent, ou son titre français exact
            questions: [ ... ]
 Une question :
@@ -19,6 +20,7 @@ Tout texte peut être bilingue : {fr: ..., en: ...}.
   python3 /chemin/deckgen/questions.py --deck deck-rc-logique.yaml --qcm 6 --ouvertes 2  # tirage -> sujet + corrigé (Markdown)
       [--seed 42] [--tags horn,owl] [--niveau-max 2] [--parts 01,03] [--lang en] [--out exam-rc]
 """
+TAGS = None
 import argparse, glob, os, random, re, sys, yaml
 
 
@@ -30,8 +32,12 @@ def T(v, lang):
 def collect(deck_file, lang):
     here = os.path.dirname(os.path.abspath(deck_file))    # dossier du cours
     deck = yaml.safe_load(open(deck_file, encoding="utf8"))
+    global TAGS
+    tp = os.path.join(here, "tags.yaml")
+    TAGS = set(yaml.safe_load(open(tp, encoding="utf8")).keys()) if os.path.exists(tp) else None
     sdir = os.path.join(here, deck.get("slides_dir", "slides"))
     bank, errors = [], []
+    index_deck = {}     # label ou titre -> (part, n, titre), pour le fichier de questions du deck entier
     for part in deck["parts"]:
         path = os.path.join(sdir, part + ".yaml")
         slides = [s for s in yaml.safe_load(open(path, encoding="utf8")) if isinstance(s, dict)]
@@ -39,7 +45,7 @@ def collect(deck_file, lang):
         for n, s in enumerate(slides, 1):
             title = T(s.get("title") or s.get("section") or "", "fr")
             for key in (s.get("label"), title):
-                if key: index.setdefault(str(key), (n, title))
+                if key: index.setdefault(str(key), (n, title)); index_deck.setdefault(str(key), (part, n, title))
             meta = s.get("meta") or s.get("hidden") or {}
             for q in (meta.get("questions") or []):
                 bank.append((part, n, title, q))
@@ -53,8 +59,22 @@ def collect(deck_file, lang):
                 n, title = index[ref]
                 for q in entry.get("questions") or []:
                     bank.append((part, n, title, q))
+    # le fichier de questions du deck entier : <slides_dir>/questions.yaml, ou deck: questions: chemin
+    qdeck = deck.get("questions")
+    qdeck = os.path.join(here, qdeck) if qdeck else os.path.join(sdir, "questions.yaml")
+    if os.path.exists(qdeck):
+        for entry in yaml.safe_load(open(qdeck, encoding="utf8")) or []:
+            ref = str(entry.get("slide"))
+            if ref not in index_deck:
+                errors.append(f"{os.path.relpath(qdeck, here)} : transparent introuvable « {ref} » (label: ou titre français exact)")
+                continue
+            part, n, title = index_deck[ref]
+            for q in entry.get("questions") or []:
+                bank.append((part, n, title, q))
     out = []
     for part, n, title, q in bank:
+        for t in q.get("tags") or []:
+            if TAGS is not None and t not in TAGS: errors.append(f"{part} transparent {n} : tag inconnu « {t} » (voir tags.yaml)")
         kind = "qcm" if "qcm" in q else "ouverte" if "ouverte" in q else None
         if not kind:
             errors.append(f"{part} transparent {n} : question sans clé qcm: ni ouverte:")
