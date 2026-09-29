@@ -65,7 +65,7 @@ WARNINGS = []   # [(ligne, message)] accumulés pendant le rendu
 def warn(msg, node=None):
     WARNINGS.append((line_of(node), msg))
 
-SLIDE_KEYS = {"cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tp", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
+SLIDE_KEYS = {"flashcards", "cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tp", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
               "image", "figure", "tikz", "args", "full", "height", "width", "source", "tex", "label"}
 # Types d'encadrés « alert » : (couleur du préambule, icône fontawesome5)
 ALERT_TYPES = {
@@ -646,6 +646,54 @@ def frise_sujets(b, ctx):
     o.append(r"\end{tikzpicture}")
     return "\n".join(o)
 
+# ------------------------------------------------------------------ flashcards
+
+FC_KEYS = {"question", "choix", "reponse", "sujet", "niveau", "only", "except", "hide"}
+FC_MOTS = {"fr": ("Carte", "Réponse", "réponses"), "en": ("Card", "Answer", "answers")}   # titre du verso : « titre (réponses) »
+
+def render_flashcards(s, ctx):
+    """flashcards: [cartes] -> par paire de cartes, un transparent des questions (recto) puis un transparent
+    des réponses (verso). Carte : question:, reponse:, choix: (QCM, * devant les bonnes), sujet:, niveau: 1-3."""
+    cartes = [c for c in s["flashcards"] if visible(c, ctx)]
+    for c in cartes:
+        if not isinstance(c, dict) or "question" not in c or "reponse" not in c:
+            raise SlideError("carte de flashcards mal formée : il faut question: et reponse:", c if isinstance(c, dict) else s)
+        if set(c) - FC_KEYS:
+            warn(f"option(s) inconnue(s) {sorted(set(c) - FC_KEYS)} dans une carte (ignorées)", c)
+    carte, rep, suffixe = FC_MOTS.get(ctx.lang, FC_MOTS["fr"])
+    base = {k: v for k, v in s.items() if k not in ("flashcards", "content", "notes")}
+    frames = []
+    for k in range(0, len(cartes), 2):
+        paire = cartes[k:k + 2]
+        faces = {"recto": [], "verso": []}
+        for c in paire:
+            n = int(c.get("niveau", 0))
+            points = "".join(r"\faCircle" if j < n else r"\faCircle[regular]" for j in range(3)) if n else ""
+            droite = f"{{\\tiny {points}}}"
+            sujet = f" · {md(c['sujet'], ctx)}" if c.get("sujet") else ""
+            choix = [str(L(x, ctx)) for x in c.get("choix") or []]
+            lettres = [chr(65 + j) for j in range(len(choix))]
+            question = md(c["question"], ctx)
+            corps = question + "".join(f"\n\\fcchoix{{{l}}}{{{md(x.lstrip('*').strip(), ctx)}}}" for l, x in zip(lettres, choix))
+            faces["recto"].append((f"\\faQuestion\\enspace {carte} \\stepcounter{{flashcard}}\\theflashcard{{}}{sujet}", droite, corps))
+            bonnes = "".join(f"\\fcchoix{{{l}}}{{\\textbf{{{md(x.lstrip('*').strip(), ctx)}}}}}\\par\n" for l, x in zip(lettres, choix) if x.startswith("*"))
+            faces["verso"].append((f"\\faCheck\\enspace {rep} \\stepcounter{{flashcard}}\\theflashcard{{}}{sujet}", droite,
+                                   f"\\fcrappel{{{question}}}\n{bonnes}{md(c['reponse'], ctx)}"))
+        for face in ("recto", "verso"):
+            env = "fcrecto" if face == "recto" else "fcverso"
+            tex = [f"\\addtocounter{{flashcard}}{{-{len(paire)}}}"] if face == "verso" else []
+            tex.append("\\begin{columns}[T]")
+            for gauche, droite, corps in faces[face]:
+                tex.append(f"  \\begin{{column}}{{0.47\\textwidth}}\n  \\begin{{{env}}}{{{gauche}}}{{{droite}}}\n{corps}\n  \\end{{{env}}}\n  \\end{{column}}")
+            tex.append("\\end{columns}")
+            f = dict(base, content=[{"tex": "\n".join(tex)}])
+            if face == "recto" and s.get("notes"):
+                f["notes"] = s["notes"]
+            if face == "verso":
+                f["title"] = f"{L(s['title'], ctx)} ({suffixe})"
+            frames.append(_render_slide(f, ctx))
+    return "\n".join(frames)
+
 def render_slide(s, ctx):
     r = _render_slide(s, ctx)
     if r is not None and isinstance(s, dict) and s.get("background"):   # background: black -> fond de page
@@ -672,6 +720,8 @@ def _render_slide(s, ctx):
     verifier_tags(s)
     if not visible(s, ctx):
         return None
+    if "flashcards" in s:
+        return render_flashcards(s, ctx)
     if "section" in s:
         court = s.get("court", s.get("short"))
         return f"\\sectionframe[{md(court, ctx) if court else ''}]{{{md(s['section'], ctx)}}}{{{md(s.get('subtitle',''), ctx)}}}"

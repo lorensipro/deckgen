@@ -293,6 +293,18 @@
 \newtcolorbox{alertbox}[2]{enhanced,colback=#1!6!white,colframe=#1!6!white,boxrule=0pt,arc=0pt,
   borderline west={2pt}{0pt}{#1},left=30pt,right=8pt,top=6pt,bottom=6pt,boxsep=0pt,before skip=9pt,after skip=4pt,
   overlay={\node[anchor=center] at ([xshift=16pt]frame.west) {\color{#1}\large #2};}}
+% Flashcards (clé flashcards: d'un transparent) : recto = la question, verso = la réponse, au transparent suivant.
+% \begin{fcrecto}{en-tête gauche}{en-tête droit} ... \end{fcrecto} ; même chose pour fcverso ; \fcchoix{A}{texte}
+\newcounter{flashcard}
+\tcbset{fcarte/.style={enhanced,arc=5pt,boxrule=0.6pt,height=0.64\textheight,drop fuzzy shadow=gris!45,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,boxsep=0pt,fonttitle=\scriptsize\bfseries,toptitle=2pt,bottomtitle=2pt,
+  before upper={\raggedright\setlength{\parskip}{3pt}}}}
+\newtcolorbox{fcrecto}[2]{fcarte,colback=white,colframe=prune!45,colbacktitle=prune!8!white,coltitle=prune,
+  titlerule=0.4pt,title={#1\hfill#2}}
+\newtcolorbox{fcverso}[2]{fcarte,colback=prune!4!white,colframe=prune,colbacktitle=prune,coltitle=white,
+  title={#1\hfill#2}}
+\newcommand{\fcchoix}[2]{\par\hangindent=1.3em\hangafter=1\noindent\makebox[1.3em][l]{\color{prune}\bfseries #1}#2}
+\newcommand{\fcrappel}[1]{{\footnotesize\itshape\color{gris}#1\par}\vspace{1pt}{\color{prune!35}\hrule height 0.4pt}\vspace{2pt}}
 % Grand chiffre + libellé
 \newcommand{\stat}[2]{%
   \parbox[t]{0.2\linewidth}{\color{accent}\fontsize{22}{24}\selectfont\bfseries #1}%

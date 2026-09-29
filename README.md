@@ -250,6 +250,28 @@ python3 /chemin/vers/deckgen/questions.py --deck deck-rc-logique.yaml --qcm 10 -
 La graine (`--seed`) rend un tirage reproductible ; l'ordre des choix d'un QCM est tiré au sort lui aussi, et le
 corrigé rappelle le transparent d'origine de chaque question.
 
+### Flashcards à montrer : `flashcards:`
+
+Pour montrer en séance le type de questions posées, un transparent `flashcards:` affiche deux cartes côte à côte
+(recto : la question, et ses choix pour un QCM), puis produit tout seul le transparent suivant avec les deux
+réponses (verso : la question rappelée en petit, la bonne réponse, l'explication). Titre du verso : « titre
+(réponses) ». Plus de deux cartes : une paire de transparents par paire de cartes. Les cartes sont numérotées
+sur tout le deck ; les points en haut à droite donnent le niveau.
+
+```yaml
+- title: "Flashcards : Horn et négation"
+  notes: "..."                   # sur le transparent des questions
+  flashcards:
+    - sujet: Horn                # en-tête de la carte (optionnel)
+      niveau: 1                  # 1 cours, 2 application, 3 réflexion : ●○○ (optionnel)
+      question: "Laquelle de ces règles n'est **pas** une clause de Horn ?"
+      choix: ["$a \\land b \\Rightarrow c$", "*$a \\land b \\Rightarrow d \\lor e$"]   # optionnel ; * = bonne(s) réponse(s)
+      reponse: "Deux littéraux positifs : ..."
+```
+
+Les cartes s'écrivent à la main (réponses courtes, pour tenir sur une carte) ; en pratique on les reprend de la
+banque de questions en resserrant `attendu:`.
+
 ## Audiences
 
 `only:` et `except:` s'appliquent à un transparent, à un bloc, à une colonne ou à un item de liste.
