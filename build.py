@@ -616,10 +616,19 @@ def frise_sujets(b, ctx):
     fils = sorted((t for t in occ if sorte(t) == "fil"), key=lambda t: occ[t][0])
     lignes = sujets + (["--"] + fils if fils and sujets else fils)
     nl = len(sujets) + len(fils)
-    dy = min(0.27, 5.2 / max(nl, 1))                      # tout tient en hauteur, quitte à serrer les lignes
-    police = r"\tiny"
     x0, x1 = 3.0, 11.4
-    dx, H = (x1 - x0) / N, dy * (len(lignes) - (0.5 if "--" in lignes else 0))
+    dx = (x1 - x0) / N
+    # noms des sections : un nom qui chevaucherait un voisin monte d'une rangée (sections courtes et voisines)
+    rangs, droite = [], []
+    for k, (c, _, a) in enumerate(sections):
+        xc = x0 + (a + bornes[k + 1]) / 2 * dx; w = 0.13 * len(str(c)) + 0.1
+        r = next((j for j, d in enumerate(droite) if xc - w / 2 > d + 0.05), len(droite))
+        if r == len(droite): droite.append(0)
+        droite[r] = xc + w / 2; rangs.append((xc, r))
+    haut = 0.32 * (len(droite) - 1)                       # la hauteur prise par les rangées en plus, rendue sur les lignes
+    dy = min(0.27, (5.2 - haut) / max(nl, 1))             # tout tient en hauteur, quitte à serrer les lignes
+    police = r"\tiny"
+    H = dy * (len(lignes) - (0.5 if "--" in lignes else 0))
     nmax = max(len(v) for v in occ.values()) if occ else 1
     # intensité d'un sujet dans la section qui commence (ici:), sinon dans tout le deck : libellé du pâle (absent) au foncé
     a_ici, b_ici = (bornes[k_ici], bornes[k_ici + 1]) if k_ici is not None else (0, N)
@@ -631,8 +640,11 @@ def frise_sujets(b, ctx):
     for k, (c, _, a) in enumerate(sections):                 # les sections en bandes, leur nom court au-dessus
         fond = "teinte!24" if k == k_ici else ("brume" if k % 2 == 0 else "white")
         o.append(f"  \\fill[{fond}] ({x0 + a*dx:.3f},{dy*0.6:.3f}) rectangle ({x0 + bornes[k+1]*dx:.3f},{-H + dy*0.4:.3f});")
+        xc, rang = rangs[k]
+        if rang:
+            o.append(f"  \\draw[gris!50,line width=0.4pt] ({xc:.3f},{dy*0.6:.3f}) -- ({xc:.3f},{dy*0.6 + 0.04 + 0.32*rang:.3f});")
         o.append(f"  \\node[font=\\scriptsize\\bfseries,color={'teinte' if k == k_ici else 'bleugris'},anchor=base] "
-                 f"at ({x0 + (a + bornes[k+1])/2*dx:.3f},{dy*0.6 + 0.1:.3f}) {{{tx(c)}}};")
+                 f"at ({xc:.3f},{dy*0.6 + 0.1 + 0.32*rang:.3f}) {{{tx(c)}}};")
     y = 0
     for t in lignes:
         if t == "--":                                     # filet entre sujets et fils rouges

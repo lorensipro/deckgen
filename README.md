@@ -411,7 +411,7 @@ Tout bloc accepte `step: N` (apparaît à partir de la couche N), `only:`, `exce
 
 `- sujets: frise` dessine, à la compilation, une ligne par tag et un trait à chaque transparent visible du deck
 qui le porte (filtres `hide`, `only`, `except` appliqués) : les sections en bandes avec leur nom court, le nombre
-de transparents au bout de chaque ligne, une flèche de progression en bas. Les lignes sont rangées par première
+de transparents au bout de chaque ligne, une flèche de progression en bas. Quand des sections courtes et voisines ont des noms qui se chevaucheraient, les noms montent en escalier (une rangée de plus, reliée à sa bande par un trait fin), et les lignes se resserrent d'autant : la frise garde sa hauteur. Les lignes sont rangées par première
 apparition ; chaque libellé est plus ou moins foncé selon le nombre de transparents du sujet dans la section qui
 commence (`ici:`), ou dans tout le deck sans `ici:` : les thèmes de la partie ressortent. Avec `ici:` (nom court ou nom d'une section, dans la langue du deck ou en français), la section est
 surlignée, un repère « on en est là » la marque sur la flèche et la suite est grisée : placée en tête de chaque
