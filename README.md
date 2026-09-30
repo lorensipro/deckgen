@@ -94,6 +94,30 @@ Les figures et `references.yaml` sont partagés.
 Le `preamble.tex` de deckgen définit le thème, les couleurs et les macros LaTeX (`\citer`, `\stat`,
 `\sectionframe`, `\fullimage`, styles TikZ `boite`, `fleche`, `etiq`).
 
+## UE : une couleur par unité d'enseignement (`ues.yaml`, `meta: ue:`)
+
+Un cours peut regrouper ses decks par UE dans un fichier `ues.yaml` (à côté de `auteur.yaml`) :
+
+```yaml
+recherche:
+  nom: {fr: "Algorithmes de recherche", en: "Search algorithms"}
+  court: {fr: "Recherche", en: "Search"}   # texte de la pastille
+  teinte: sarcelle                          # une couleur du préambule
+  motif: graphe                             # motif de la page de titre, si le deck n'en choisit pas
+  icone: faCompass                          # icône fontawesome5 de la pastille
+  familles: [search, sat, csp, plan]        # préfixes de tags (tags.yaml) de l'UE
+```
+
+Un deck s'y rattache par `meta: ue: recherche`. L'UE fixe la teinte du deck (trait des titres, frise d'avancement, bande de
+la page de titre, trait des pages de section ; `meta: teinte:` reste prioritaire), le motif par défaut, et une pastille
+(icône et nom court, dans la teinte) à gauche du pied de page. Dans la frise des sujets, chaque ligne de tag prend la
+couleur de l'UE de sa famille : on voit ce qu'un deck emprunte aux autres UE. Dans un texte, `\pastille{id}` insère la
+pastille de n'importe quelle UE (pour un transparent de légende). Sans `ues.yaml`, rien ne change.
+
+Les rôles de transparent se lisent aussi à la **forme**, pour rester distincts quand une UE a la couleur d'un rôle :
+`tp: true` donne un trait de titre en tirets et un point carré dans la frise d'avancement, `hauteur: true` un trait
+double et un point en losange ; `respiration: true` garde un trait plein sable et un point rond.
+
 ## Bilinguisme
 
 Toute chaîne peut être soit un texte, soit un couple `{fr: ..., en: ...}`, au plus près du texte :
@@ -295,8 +319,8 @@ dans `deck.yaml` (`audiences:`).
   frise: false            # pas de point dans la frise d'avancement (animation, enchaînement rapide)
   tags: [kr-horn, general-exercise]   # sujets du transparent, parmi ceux de tags.yaml du cours (refusés sinon) ; colonne de --export
   respiration: true       # anecdote, histoire, aparté : titre, trait et point de la frise en sable, tasse, bulle « z z Z »
-  hauteur: true           # on prend de la hauteur (philosophie, recul) : titre, trait et point en prune, plume, montgolfière
-  tp: true                # « maintenant, TP » (consignes d'un TP) : titre, trait et point en sarcelle, ordinateur portable
+  hauteur: true           # on prend de la hauteur (philosophie, recul) : trait double prune, point en losange, plume, montgolfière
+  tp: true                # « maintenant, TP » (consignes d'un TP) : trait en tirets sarcelle, point carré, ordinateur portable
   shrink: 15              # dépannage seulement : réduit le contenu d'au plus 15 %. Règle du projet : texte à taille
                           # unique, on coupe un transparent trop chargé en deux plutôt que de réduire
   only: [...] / except: [...]

@@ -94,6 +94,12 @@
 \newcount\deckgen@courant
 \newtoks\deckgen@avant \newtoks\deckgen@apres
 \newbox\deckgen@dotsbox \newbox\deckgen@avantbox \newbox\deckgen@apresbox \newdimen\deckgen@dispo
+% Forme des points : les rôles se lisent à la forme, pas seulement à la couleur (une UE peut avoir la teinte d'un rôle) :
+% rond (transparent ordinaire, respiration), carré (TP), losange (hauteur).
+\def\deckgen@f{0}
+\newcommand{\deckgen@carre}{\tikz[baseline=-0.2pt]\fill (0,0) rectangle (.075cm,.075cm);}
+\newcommand{\deckgen@losange}{\tikz[baseline=-0.2pt]\fill (.05cm,-.012cm) -- (.1cm,.038cm) -- (.05cm,.088cm) -- (0,.038cm) -- cycle;}
+\newcommand{\deckgen@point}[1]{\ifcase\deckgen@f\relax\usebeamertemplate{#1}\or\deckgen@carre\or\deckgen@losange\fi}
 % Frise : noms courts des sections précédentes, points de la section courante (nom court centré dessous), noms des suivantes
 \def\deckgendots{\begingroup\tiny
   \def\subsectionentry##1##2##3##4##5{}%
@@ -109,9 +115,9 @@
   % passe 2 : les points
   \def\sectionentry##1##2##3##4##5{}\def\deckgenrespi##1##2{}\def\deckgenhaut##1##2{}\def\deckgentp##1##2{}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax
-    \IfSubStr{\deckgen@respis}{,##1-##3,}{\colorlet{deckgen@pt}{sable}}{\IfSubStr{\deckgen@hauts}{,##1-##3,}{\colorlet{deckgen@pt}{prune}}{\IfSubStr{\deckgen@tps}{,##1-##3,}{\colorlet{deckgen@pt}{sarcelle}}{\colorlet{deckgen@pt}{teinte}}}}%
-    \ifnum\deckgen@courant=##3\relax{\color{deckgen@pt}\usebeamertemplate{mini frame}}%
-    \else{\color{deckgen@pt!60}\usebeamertemplate{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
+    \IfSubStr{\deckgen@respis}{,##1-##3,}{\colorlet{deckgen@pt}{sable}\def\deckgen@f{0}}{\IfSubStr{\deckgen@hauts}{,##1-##3,}{\colorlet{deckgen@pt}{prune}\def\deckgen@f{2}}{\IfSubStr{\deckgen@tps}{,##1-##3,}{\colorlet{deckgen@pt}{sarcelle}\def\deckgen@f{1}}{\colorlet{deckgen@pt}{teinte}\def\deckgen@f{0}}}}%
+    \ifnum\deckgen@courant=##3\relax{\color{deckgen@pt}\deckgen@point{mini frame}}%
+    \else{\color{deckgen@pt!60}\deckgen@point{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
   \setbox\deckgen@dotsbox=\hbox{\dohead\unskip}%
   % si les points et les noms ne tiennent pas sur la ligne, on resserre les points (jusqu'à 80 % de leur écart)
   \setbox\deckgen@avantbox=\hbox{\the\deckgen@avant}\setbox\deckgen@apresbox=\hbox{\the\deckgen@apres}%
@@ -125,6 +131,18 @@
 \def\deckgen@writeslidentry@sansfrise{\expandafter\ifblank\expandafter{\beamer@framestartpage}{}{\clearpage\beamer@notesactions}}
 \newcommand{\sansfrise}[1]{\begingroup\let\beamer@writeslidentry\deckgen@writeslidentry@sansfrise#1\endgroup}
 \makeatother
+% Trait sous le titre : plein dans la teinte du deck (celle de l'UE) ; les rôles se lisent aussi à la forme, pour rester
+% distincts quand l'UE a la même couleur qu'un rôle : respiration plein sable, hauteur double prune, TP en tirets sarcelle.
+\newcommand{\deckgentrait}{%
+  \ifrespiration{\color{sable}\rule{0.92\paperwidth}{1.1pt}}%
+  \else\ifhauteur{\color{prune}\rlap{\rule[1.35pt]{0.92\paperwidth}{0.55pt}}\rule{0.92\paperwidth}{0.55pt}}%
+  \else\iftp{\color{sarcelle}\hbox to 0.92\paperwidth{\leaders\hbox to 8pt{\rule{5pt}{1.1pt}\hss}\hfill}}%
+  \else{\color{teinte}\rule{0.92\paperwidth}{1.1pt}}\fi\fi\fi}
+% Pastille d'UE (meta: ue: du deck, décrite dans ues.yaml du cours) : icône et nom court, dans la teinte, dans le pied de page
+\newcommand{\pastilleuec}[3]{\tikz[baseline=(p.base)]\node[fill=#1,text=white,rounded corners=1.5pt,inner xsep=2pt,inner ysep=1pt,font=\tiny\bfseries](p){#2\,#3};}
+\newcommand{\pastilleue}[2]{\pastilleuec{teinte}{#1}{#2}}
+% \pastille{id} : la pastille d'une UE quelconque de ues.yaml, dans le texte (build.py définit \pastille@<id>) ; taille du texte courant
+\makeatletter\newcommand{\pastille}[1]{\ifcsname pastille@#1\endcsname{\let\tiny\footnotesize\csname pastille@#1\endcsname}\else\textbf{?#1?}\fi}\makeatother
 \setbeamertemplate{frametitle}{%
   \nointerlineskip
   \ifnavigation
@@ -140,7 +158,7 @@
     \usebeamerfont{frametitle}\ifrespiration{\color{sable}\faCoffee\enspace}\fi\ifhauteur{\color{prune}\faFeather\enspace}\fi\iftp{\color{sarcelle}\faLaptopCode\enspace}\fi\insertframetitle\strut
   \end{beamercolorbox}%
   \vspace*{3pt}%
-  \hspace*{0.04\paperwidth}{\color{\ifrespiration sable\else\ifhauteur prune\else\iftp sarcelle\else teinte\fi\fi\fi}\rule{0.92\paperwidth}{1.1pt}}%
+  \hspace*{0.04\paperwidth}\deckgentrait%
   \ifrespiration\llap{\smash{\raisebox{1pt}{\bullezzz}}\hspace{0.12\paperwidth}}\fi%
   \ifhauteur\llap{\smash{\raisebox{1pt}{\montgolfiere}}\hspace{0.12\paperwidth}}\fi%
   \iftp\llap{\smash{\raisebox{1.1pt}{\portabletp}}\hspace{0.12\paperwidth}}\fi%
@@ -316,7 +334,7 @@
   \begin{frame}[plain]
     \vspace*{0.28\textheight}
     \hspace*{0.06\paperwidth}{\fontsize{30}{34}\selectfont\bfseries\color{bleugris}#2\par}
-    \vspace{6pt}\hspace*{0.06\paperwidth}{\color{encre}\rule{0.88\paperwidth}{1.1pt}\par}
+    \vspace{6pt}\hspace*{0.06\paperwidth}{\color{teinte}\rule{0.88\paperwidth}{1.1pt}\par}
     \vspace{6pt}\hspace*{0.06\paperwidth}{\large\color{gris}#3\par}
   \end{frame}}
 % Image plein écran (frame sans titre)

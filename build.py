@@ -517,6 +517,25 @@ def bibliography_frames(ctx, per_frame=4):
     return frames
 
 _TAGS = None
+_UES = None
+def ues():
+    """Les UE du cours (ues.yaml) : {id: {nom:, court:, teinte:, motif:, icone:, familles: [...]}} ; {} s'il n'existe pas.
+    Un deck s'y rattache par meta: ue: <id> (teinte, motif de la page de titre, pastille du pied de page) ; les familles
+    de tags (préfixe avant le premier tiret) donnent la couleur des lignes de la frise des sujets."""
+    global _UES
+    if _UES is None:
+        p = os.path.join(PROJECT, "ues.yaml")
+        _UES = (load_yaml(p) or {}) if os.path.exists(p) else {}
+        for k in _UES:
+            if not re.fullmatch(r"[a-z]+", str(k)):
+                sys.exit(f"ues.yaml : identifiant d'UE « {k} » invalide (lettres minuscules seulement)")
+    return _UES
+
+def ue_du_tag(t):
+    """L'UE dont la famille (préfixe du tag avant le premier tiret) figure dans familles: de ues.yaml, sinon None."""
+    fam = t.split("-")[0]
+    return next((k for k, d in ues().items() if fam in (d.get("familles") or [])), None)
+
 def tags_meta():
     """Le vocabulaire des tags (tags.yaml du cours) : {tag: {desc:, nom:, sorte:, aima:}} ; {} s'il n'existe pas."""
     global _TAGS
@@ -621,7 +640,8 @@ def frise_sujets(b, ctx):
             y -= dy * 0.5
             continue
         fil = sorte(t) == "fil"
-        col = "sable!85!black" if fil else "formel"
+        u = ue_du_tag(t)
+        col = "sable!85!black" if fil else (f"ue{u}" if u else "formel")   # un sujet prend la couleur de son UE (ues.yaml)
         o.append(f"  \\node[font={police},color={teinte_nom(t, 'sable!70!black' if fil else 'encre')},anchor=east] at ({x0 - 0.1:.3f},{y:.3f}) {{{tx(tag_nom(t, ctx))}}};")
         for i in occ[t]:
             o.append(f"  \\fill[{col if i < fin_ici else 'gris!35'}] ({x0 + i*dx:.3f},{y - 0.3*dy:.3f}) rectangle ({x0 + (i + 0.8)*dx:.3f},{y + 0.3*dy:.3f});")
@@ -808,6 +828,22 @@ def document(deck, ctx, body, titlepage=True):
         ("pdfsubject", plain(meta.get("date", ""))),
         ("pdfkeywords", ", ".join(x for x in (licence, version, ctx.lang, ctx.audience or "") if x))] if v) + "}") if body else ""
     date = md(meta.get("date", ""), ctx, par=False) + (f"\\\\[2pt]{{\\small\\color{{gris}}{licence}}}" if licence else "")
+    # UE du deck (ues.yaml du cours) : teinte, motif par défaut, pastille dans le pied de page
+    ue_id, ue = meta.get("ue"), None
+    if ue_id is not None:
+        if ue_id not in ues():
+            sys.exit(f"ue: inconnue « {ue_id} » (connues dans ues.yaml : {', '.join(ues()) or 'aucune'})")
+        ue = ues()[ue_id]
+        icone = ("\\" + ue["icone"]) if ue.get("icone") else ""
+        pastille = f"\\pastilleue{{{icone}}}{{{md(ue.get('court', ue_id), ctx, par=False)}}}"
+        pied_gauche = pastille + (f"\\enspace {pied_gauche}" if pied_gauche else "")
+        pied_complet = True
+    teinte = meta.get("teinte") or (ue or {}).get("teinte")
+    couleurs_ue = "".join(f"\\colorlet{{ue{k}}}{{{d.get('teinte', 'formel')}}}" for k, d in ues().items())
+    couleurs_ue += "".join("\\expandafter\\def\\csname pastille@" + k + "\\endcsname{\\pastilleuec{ue" + k + "}{" + (("\\" + d["icone"]) if d.get("icone") else "")
+                           + "}{" + md(d.get("court", k), ctx, par=False) + "}}" for k, d in ues().items())
+    if meta.get("motif") is None and ue and ue.get("motif"):
+        meta = dict(meta, motif=ue["motif"])
     MOTIFS = {"graphe": "motifgraphe", "caverne": "motifcaverne", "coupure": "motifcoupure", "et-ou": "motifetou",
               "mondes": "motifmondes", "regle": "motifregle", "bdd": "motifbdd", "agent": "motifagent"}
     if meta.get("motif", "graphe") not in MOTIFS:
@@ -853,7 +889,7 @@ def document(deck, ctx, body, titlepage=True):
         f"\\date{{{date}}}", pdfmeta,   # métadonnées PDF : avant \begin{document}, hyperref les écrit à ce moment-là
         "\\begin{document}", f"\\def\\audience{{{ctx.audience or ''}}}",
         "\\navigationtrue" if meta.get("navigation") else "",
-        f"\\colorlet{{teinte}}{{{meta['teinte']}}}" if meta.get("teinte") else "",
+        f"\\colorlet{{teinte}}{{{teinte}}}" if teinte else "", couleurs_ue,
         (f"\\renewcommand{{\\piedgauche}}{{{pied_gauche}}}\\renewcommand{{\\piedmilieu}}{{{pied_milieu}}}"
          f"\\renewcommand{{\\pieddroite}}{{{pied_droite}}}") if pied_complet else "", (titre_defs + "\n\\sbox{\\motifbox}{\\scalebox{0.85}{\\" + motif + "}}\n\\pagetitre") if titlepage else "",
         *body, "\\end{document}", ""])
