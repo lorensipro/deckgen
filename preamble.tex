@@ -97,17 +97,20 @@
 % Forme des points : les rôles se lisent à la forme, pas seulement à la couleur (une UE peut avoir la teinte d'un rôle) :
 % rond (transparent ordinaire, respiration), carré (TP), losange (hauteur).
 \def\deckgen@f{0}
-\newcommand{\deckgen@carre}{\tikz[baseline=-0.2pt]\fill (0,0) rectangle (.075cm,.075cm);}
-\newcommand{\deckgen@losange}{\tikz[baseline=-0.2pt]\fill (.05cm,-.012cm) -- (.1cm,.038cm) -- (.05cm,.088cm) -- (0,.038cm) -- cycle;}
+\newcommand{\deckgen@carre}{\raisebox{0.2pt}{\rule{.075cm}{.075cm}}}
+\newcommand{\deckgen@losange}{\raisebox{0.24pt}{\rotatebox[origin=c]{45}{\rule{.0707cm}{.0707cm}}}}
 \newcommand{\deckgen@point}[1]{\ifcase\deckgen@f\relax\usebeamertemplate{#1}\or\deckgen@carre\or\deckgen@losange\fi}
-% Frise : noms courts des sections précédentes, points de la section courante (nom court centré dessous), noms des suivantes
+% Frise : noms courts des sections précédentes, points de la section courante (nom court centré dessous), noms des suivantes.
+% Redessinée sur chaque page (couches comprises) : tout doit y être en temps constant par point. D'où les rôles notés
+% en \csname (et non en listes lues par \IfSubStr), les points en filets TeX (et non en mini-figures TikZ), et la boîte
+% resserrée par \unhbox (sans relire le .nav) : sur le deck RC, une passe de pdflatex est passée de 212 s à 21 s.
 \def\deckgendots{\begingroup\tiny
   \def\subsectionentry##1##2##3##4##5{}%
   % passe 1 : noms des autres sections, et le point « en cours » = dernier transparent compté ne dépassant pas celui-ci
-  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax\def\deckgen@respis{,}\def\deckgen@hauts{,}\def\deckgen@tps{,}%
-  \def\deckgenrespi##1##2{\edef\deckgen@respis{\deckgen@respis##1-##2,}}%
-  \def\deckgenhaut##1##2{\edef\deckgen@hauts{\deckgen@hauts##1-##2,}}%
-  \def\deckgentp##1##2{\edef\deckgen@tps{\deckgen@tps##1-##2,}}%
+  \deckgen@avant={}\deckgen@apres={}\deckgen@courant=0\relax
+  \def\deckgenrespi##1##2{\expandafter\let\csname dg@r@##1-##2\endcsname\relax}%
+  \def\deckgenhaut##1##2{\expandafter\let\csname dg@h@##1-##2\endcsname\relax}%
+  \def\deckgentp##1##2{\expandafter\let\csname dg@t@##1-##2\endcsname\relax}%
   \def\sectionentry##1##2##3##4##5{\ifnum##1<\c@section\relax\deckgen@avant=\expandafter{\the\deckgen@avant{\color{gris}##2}\hskip8pt plus1fil}\fi
     \ifnum##1>\c@section\relax\deckgen@apres=\expandafter{\the\deckgen@apres\hskip8pt plus1fil{\color{gris}##2}}\fi}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax\ifnum##3>\c@subsectionslide\else\deckgen@courant=##3\relax\fi\fi}%
@@ -115,14 +118,14 @@
   % passe 2 : les points
   \def\sectionentry##1##2##3##4##5{}\def\deckgenrespi##1##2{}\def\deckgenhaut##1##2{}\def\deckgentp##1##2{}%
   \def\slideentry##1##2##3##4##5##6{\ifnum\c@section=##1\relax
-    \IfSubStr{\deckgen@respis}{,##1-##3,}{\colorlet{deckgen@pt}{sable}\def\deckgen@f{0}}{\IfSubStr{\deckgen@hauts}{,##1-##3,}{\colorlet{deckgen@pt}{prune}\def\deckgen@f{2}}{\IfSubStr{\deckgen@tps}{,##1-##3,}{\colorlet{deckgen@pt}{sarcelle}\def\deckgen@f{1}}{\colorlet{deckgen@pt}{teinte}\def\deckgen@f{0}}}}%
-    \ifnum\deckgen@courant=##3\relax{\color{deckgen@pt}\deckgen@point{mini frame}}%
-    \else{\color{deckgen@pt!60}\deckgen@point{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
+    \ifcsname dg@r@##1-##3\endcsname\def\deckgen@c{sable}\def\deckgen@f{0}\else\ifcsname dg@h@##1-##3\endcsname\def\deckgen@c{prune}\def\deckgen@f{2}\else\ifcsname dg@t@##1-##3\endcsname\def\deckgen@c{sarcelle}\def\deckgen@f{1}\else\def\deckgen@c{teinte}\def\deckgen@f{0}\fi\fi\fi
+    \ifnum\deckgen@courant=##3\relax{\color{\deckgen@c}\deckgen@point{mini frame}}%
+    \else{\color{\deckgen@c!60}\deckgen@point{mini frame in current subsection}}\fi\hskip\beamer@boxsize minus0.8\beamer@boxsize\fi}%
   \setbox\deckgen@dotsbox=\hbox{\dohead\unskip}%
   % si les points et les noms ne tiennent pas sur la ligne, on resserre les points (jusqu'à 80 % de leur écart)
   \setbox\deckgen@avantbox=\hbox{\the\deckgen@avant}\setbox\deckgen@apresbox=\hbox{\the\deckgen@apres}%
   \deckgen@dispo=\dimexpr\hsize-\leftskip-\rightskip-\wd\deckgen@avantbox-\wd\deckgen@apresbox\relax
-  \ifdim\wd\deckgen@dotsbox>\deckgen@dispo\setbox\deckgen@dotsbox=\hbox to\deckgen@dispo{\dohead\unskip}\fi
+  \ifdim\wd\deckgen@dotsbox>\deckgen@dispo\setbox\deckgen@dotsbox=\hbox to\deckgen@dispo{\unhbox\deckgen@dotsbox}\fi
   \hbox to\dimexpr\hsize-\leftskip-\rightskip\relax{\the\deckgen@avant
     \vtop{\hbox{\copy\deckgen@dotsbox}\vskip1pt\hbox to\wd\deckgen@dotsbox{\hss{\color{teinte}(\ifnum\c@section=0 \color{gris}hors section\else\insertsectionhead\fi)}\hss}}%
     \the\deckgen@apres}%
