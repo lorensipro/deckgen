@@ -174,6 +174,19 @@ tout. Dans l'aperçu VS Code, un transparent `hide: true` reste affiché (on l'�
 
 Les commentaires YAML (`# ...`) servent aux notes pour soi ; ils ne passent jamais dans le `.tex`.
 
+## Corrigés pour l'enseignant : `correction: true`
+
+Un transparent `correction: true` (corrigé d'un TP, codes de déblocage d'une démo, mesures pour l'enseignant) n'est
+jamais dans le PDF des étudiants. `--corrections` fait l'inverse : il ne compile **que** ces transparents, avec les
+pages de section qui en contiennent, dans `<nom>-<lang>-corrections.pdf`, un PDF à part pour soi. L'aperçu d'un seul
+transparent (`--slide`) les montre normalement.
+
+```yaml
+- title: "Wumpus en blocs : le corrigé"
+  correction: true        # absent du deck ; seul dans  python3 build.py --deck deck-x.yaml --corrections
+  content: [...]
+```
+
 ## Gabarits : `template:`
 
 Un transparent récurrent se décrit une fois dans `templates/<nom>.tex` (une frame complète) ou

@@ -8,6 +8,7 @@ Usage, depuis le dossier du cours (celui du deck) :
     python3 build.py --audience public    # ne garde que les transparents/blocs visibles pour « public »
     python3 build.py --lang en --audience experts --out cours-experts-en
     python3 build.py --no-pdf             # écrit seulement build/<nom>.tex
+    python3 build.py --corrections        # seulement les transparents correction: true -> <nom>-corrections.pdf
     python3 build.py --slide slides/01-contexte.yaml:42   # aperçu du transparent sous la ligne 42
                                           #   -> build/preview/slide.pdf et slide.png
 
@@ -65,7 +66,7 @@ WARNINGS = []   # [(ligne, message)] accumulés pendant le rendu
 def warn(msg, node=None):
     WARNINGS.append((line_of(node), msg))
 
-SLIDE_KEYS = {"flashcards", "cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tp", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
+SLIDE_KEYS = {"flashcards", "correction", "cite", "shrink", "court", "short", "frise", "respiration", "hauteur", "tp", "tags", "title", "subtitle", "notes", "content", "only", "except", "hide", "meta", "hidden", "plain", "section", "background", "template",
               "image", "figure", "tikz", "args", "full", "height", "width", "source", "tex", "label"}
 # Types d'encadrés « alert » : (couleur du préambule, icône fontawesome5)
 ALERT_TYPES = {
@@ -124,6 +125,27 @@ def L(v, ctx):
     return v
 
 SHOW_HIDDEN = False   # --show-hidden : ignorer les hide: true
+CORRECTIONS = False   # --corrections : ne compiler que les transparents correction: true (et leurs pages de section)
+
+def selection_corrections(slides):
+    """Transparents d'une partie retenus selon correction: true. Sans --corrections : tous sauf les corrections.
+    Avec --corrections : les corrections, et chaque page de section suivie d'au moins une correction avant la suivante."""
+    est_corr = lambda s: isinstance(s, dict) and bool(s.get("correction"))
+    if not CORRECTIONS:
+        return [s for s in slides if not est_corr(s)]
+    garde = []
+    for i, s in enumerate(slides):
+        if est_corr(s):
+            garde.append(s)
+        elif isinstance(s, dict) and "section" in s:
+            suite = []
+            for t in slides[i + 1:]:
+                if isinstance(t, dict) and "section" in t:
+                    break
+                suite.append(t)
+            if any(est_corr(t) for t in suite):
+                garde.append(s)
+    return garde
 
 def visible(node, ctx):
     """Filtre : hide: true (sauf --show-hidden), puis audience only: [..] / except: [..],
@@ -578,7 +600,7 @@ def plan_du_deck(ctx):
     slides_dir = os.path.join(PROJECT, DECK.get("slides_dir", "slides"))
     sections, pos, fr = [], [], Ctx("fr", ctx.audience, ctx.audiences)
     for p in DECK.get("parts", []):
-        for s in load_yaml(os.path.join(slides_dir, p if p.endswith(".yaml") else p + ".yaml")):
+        for s in selection_corrections(load_yaml(os.path.join(slides_dir, p if p.endswith(".yaml") else p + ".yaml"))):
             if not isinstance(s, dict) or not visible(s, ctx):
                 continue
             if "section" in s:
@@ -939,7 +961,7 @@ def build(deck, ctx, out_name, make_pdf=True):
         except yaml.YAMLError as e:
             sys.exit(f"{os.path.relpath(path, PROJECT)} : erreur YAML\n{e}")
         body.append(f"\n% ==================== {os.path.basename(path)} ====================")
-        for s in slides:
+        for s in selection_corrections(slides):
             total += 1
             try:
                 r = render_slide(s, ctx)
@@ -991,6 +1013,7 @@ def export_meta(deck, ctx, target):
             title = s.get("section") or s.get("title") or ("[image]" if "image" in s else "[sans titre]")
             filters = []
             if s.get("hide"): filters.append("hide")
+            if s.get("correction"): filters.append("correction")
             if s.get("only"): filters.append("only:" + ",".join(s["only"]))
             if s.get("except"): filters.append("except:" + ",".join(s["except"]))
             rows.append({"n": n, "file": os.path.relpath(path, PROJECT), "line": line_of(s), "index": i + 1,
@@ -1256,6 +1279,7 @@ def main():
     ap.add_argument("--make-format", action="store_true", help="(re)précompile le préambule pour --slide")
     ap.add_argument("--regen", action="store_true", help="régénérer toutes les figures produites par des scripts")
     ap.add_argument("--show-hidden", action="store_true", help="inclure les transparents et blocs marqués hide: true")
+    ap.add_argument("--corrections", action="store_true", help="ne compiler que les transparents correction: true (sortie <deck>-<lang>-corrections)")
     ap.add_argument("--refs", action="store_true", help="lister les références citées (cite:) par le deck, et celles de references.yaml jamais citées")
     ap.add_argument("--export", metavar="FICHIER|-", help="exporter titres, filtres et meta: des transparents (.md, .json, .yaml ; - = Markdown sur stdout)")
     ap.add_argument("--tikz", metavar="FICHIER.tikz", help="aperçu d'un fichier TikZ (dans le transparent qui l'utilise, sinon seul)")
@@ -1277,8 +1301,8 @@ def main():
     audience = a.audience or deck.get("audience")
     if audience and audience not in deck.get("audiences", [audience]):
         sys.exit(f"Audience inconnue : {audience} (connues : {deck.get('audiences')})")
-    out = a.out or f"{deck.get('name', 'slides')}-{lang}" + (f"-{audience}" if audience else "")
-    global REGEN, SHOW_HIDDEN; REGEN = a.regen; SHOW_HIDDEN = a.show_hidden
+    out = a.out or f"{deck.get('name', 'slides')}-{lang}" + (f"-{audience}" if audience else "") + ("-corrections" if a.corrections else "")
+    global REGEN, SHOW_HIDDEN, CORRECTIONS; REGEN = a.regen; SHOW_HIDDEN = a.show_hidden; CORRECTIONS = a.corrections
     ctx = Ctx(lang, audience, deck.get("audiences", []))
     if a.export:
         export_meta(deck, ctx, a.export); return
